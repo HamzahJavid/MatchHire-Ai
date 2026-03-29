@@ -2,7 +2,7 @@ import React from 'react'
 import '../pages/Login.css'
 import Logo from '../assets/logo.svg'
 
-export default function Login() {
+export default function Login({ onSwitch }) {
   return (
     <div className="login-page">
       <div className="login-card">
@@ -29,7 +29,7 @@ export default function Login() {
           <button className="btn-primary" type="submit">Sign In <span className="arrow">→</span></button>
         </form>
 
-        <p className="signup">Don't have an account? <a href="#">Sign up</a></p>
+        <p className="signup">Don't have an account? <a href="#" onClick={(e)=>{e.preventDefault(); onSwitch && onSwitch('signup')}}>Sign up</a></p>
       </div>
     </div>
   )

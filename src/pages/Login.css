@@ -1,0 +1,95 @@
+/* Page background */
+.login-page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: radial-gradient( circle at 10% 20%, rgba(255,122,61,0.06), transparent 20% ), radial-gradient( circle at 90% 80%, rgba(245,109,84,0.03), transparent 20% ), #fbfafb;
+  padding: 3rem;
+}
+
+.login-card {
+  width: 380px;
+  max-width: 94%;
+  background: linear-gradient(180deg, rgba(255,255,255,0.96), rgba(255,255,255,0.9));
+  border-radius: 20px;
+  padding: 32px 28px 28px 28px;
+  box-shadow: 0 12px 40px rgba(8,15,28,0.08);
+  text-align: center;
+}
+
+.logo {
+  width: 44px;
+  height: 44px;
+  margin-bottom: 8px;
+}
+
+.brand {
+  margin: 0 0 8px 0;
+  font-size: 16px;
+  color: #1f2937;
+  font-weight: 700;
+}
+
+.login-card h1 {
+  margin: 0;
+  font-size: 28px;
+  color: #0b1220;
+}
+
+.subtitle {
+  margin-top: 6px;
+  color: #9aa0ad;
+  margin-bottom: 20px;
+}
+
+.login-form { display:flex; flex-direction:column; gap:14px; margin-top:10px; }
+
+.field { position: relative; }
+.field input {
+  width: 100%;
+  padding: 11px 14px 11px 44px;
+  border-radius: 20px;
+  border: 1px solid #f0e9e9;
+  background: #fbf7f5;
+  color: #111827;
+  font-size: 14px;
+  outline: none;
+  box-sizing: border-box;
+}
+.field input::placeholder { color: #b7b7bf }
+.input-icon { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); display: inline-flex; align-items:center; justify-content:center; }
+
+.btn-primary {
+  margin-top: 6px;
+  padding: 14px 20px;
+  border-radius: 999px;
+  border: none;
+  color: white;
+  font-weight: 600;
+  font-size: 16px;
+  cursor: pointer;
+  background: linear-gradient(90deg, #ff7a3d 0%, #ff8a5a 100%);
+  box-shadow: 0 8px 20px rgba(255,122,61,0.18);
+}
+.btn-primary .arrow { display:inline-block; margin-left: 8px; opacity: 0.95; transform: translateX(0); }
+
+/* Hover: subtle left-right wiggle for the arrow */
+.btn-primary:hover .arrow {
+  animation: arrow-wiggle 0.9s ease-in-out infinite;
+}
+
+@keyframes arrow-wiggle {
+  0% { transform: translateX(0); }
+  25% { transform: translateX(4px); }
+  50% { transform: translateX(0); }
+  75% { transform: translateX(-4px); }
+  100% { transform: translateX(0); }
+}
+
+.signup { margin-top: 16px; color: #9aa0ad; }
+.signup a { color: #ff7a3d; text-decoration:none; font-weight:600 }
+
+@media (max-width:480px){
+  .login-card{ width: 92%; padding: 28px }
+}

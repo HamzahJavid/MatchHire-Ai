@@ -3,6 +3,12 @@ import '../pages/Login.css'
 import Logo from '../assets/logo.svg'
 
 export default function Login({ onSwitch }) {
+  function handleSignIn(e){
+    e.preventDefault()
+    localStorage.setItem('isLoggedIn','true')
+    onSwitch && onSwitch('dashboard')
+  }
+
   return (
     <div className="login-page">
       <div className="login-card">
@@ -11,7 +17,7 @@ export default function Login({ onSwitch }) {
         <h1>Welcome Back</h1>
         <p className="subtitle">Sign in to continue matching</p>
 
-        <form className="login-form" onSubmit={(e)=>e.preventDefault()}>
+        <form className="login-form" onSubmit={handleSignIn}>
           <label className="field">
             <span className="input-icon" aria-hidden>
               <svg width="18" height="12" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M3 6.5L12 13l9-6.5" stroke="#B9B9C3" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>

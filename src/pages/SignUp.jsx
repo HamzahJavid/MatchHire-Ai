@@ -4,7 +4,11 @@ import Logo from '../assets/logo.svg'
 
 export default function SignUp({ onSwitch }){
   const [role, setRole] = useState('recruiter')
-
+  function handleCreate(e){
+    e.preventDefault()
+    localStorage.setItem('isLoggedIn','true')
+    onSwitch && onSwitch('dashboard')
+  }
   return (
     <div className="signup-page">
       <div className="login-card">
@@ -25,7 +29,7 @@ export default function SignUp({ onSwitch }){
           </button>
         </div>
 
-        <form className="signup-form" onSubmit={(e)=>e.preventDefault()}>
+        <form className="signup-form" onSubmit={handleCreate}>
           <label className="field">
             <span className="input-icon" aria-hidden>👤</span>
             <input type="text" placeholder="Full name" required />

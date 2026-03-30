@@ -1,0 +1,43 @@
+.sidebar{
+  position: fixed;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 260px;
+  background: #fff;
+  border-right: 1px solid #f0e9e6;
+  display: flex;
+  flex-direction: column;
+  transition: transform 200ms ease;
+  z-index: 40;
+}
+
+.sidebar.open{ transform: translateX(0) }
+.sidebar.closed{ transform: translateX(-100%) }
+
+.sb-top{ display:flex; align-items:center; justify-content: space-between; gap:12px; padding:18px }
+.sb-close-btn{ background: transparent; border: 0; font-size: 20px; color: #b99; cursor: pointer; padding: 4px; }
+.hb-line{ display:block; width:22px; height:2px; background:#b99; margin:3px 0 }
+.sb-brand{ font-weight:600; color:#4a3b3a; font-size: 20px; }
+
+.sb-nav{ padding:8px 12px; flex:1; overflow-y:auto }
+.sb-role{ font-size:14px; color:#b7a7a5; margin:12px 6px; letter-spacing: 0.5px; }
+.sb-link{ display:flex; align-items:center; gap:12px; width:100%; padding:14px 10px; border-radius:12px; background:transparent; border:0; cursor:pointer; color:#6b5b5a; font-size: 16px; }
+.sb-link:hover{ background:#fdecea }
+.sb-ico{ width:32px; font-size: 20px; display:inline-flex; justify-content:center }
+.sb-label{ white-space:nowrap; overflow:hidden; text-overflow:ellipsis; transition: opacity 150ms ease }
+
+.sb-bottom{ padding:16px 12px; border-top:1px solid #f4eceb }
+.sb-bottom-link{ display:flex; align-items:center; gap:12px; width:100%; padding:12px 10px; border-radius:8px; background:transparent; border:0; cursor:pointer; color:#6b5b5a; font-size: 16px; }
+
+/* Backdrop for mobile when sidebar open */
+.sb-backdrop{ position:fixed; inset:0; background:rgba(255,255,255,0.3); backdrop-filter:blur(6px); z-index:30 }
+
+/* Responsive behavior */
+@media (max-width: 899px){
+  .sidebar{ width:260px; box-shadow:0 12px 30px rgba(0,0,0,0.16) }
+}
+
+@media (prefers-reduced-motion: reduce){
+  .sidebar{ transition: none }
+}

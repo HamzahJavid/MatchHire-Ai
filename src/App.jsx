@@ -1,26 +1,48 @@
-import React, { useEffect, useState } from 'react'
-import Login from './pages/Login'
-import SignUp from './pages/SignUp'
-import Dashboard from './pages/Dashboard'
+import { useState } from "react";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import Login from "./pages/Login";
+import SignUp from "./pages/SignUp";
+import Dashboard from "./pages/Dashboard";
 
-export default function App(){
-  const [page, setPage] = useState('login')
+export default function App() {
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [role, setRole] = useState("seeker");
 
-  useEffect(()=>{
-    const logged = localStorage.getItem('isLoggedIn') === 'true'
-    setPage(logged ? 'dashboard' : 'login')
-  }, [])
-
-  function switchPage(p){
-    if(p === 'logout'){
-      localStorage.removeItem('isLoggedIn')
-      setPage('login')
-      return
-    }
-    setPage(p)
+  function handleLogin(userRole = "seeker") {
+    setIsLoggedIn(true);
+    setRole(userRole);
   }
 
-  if(page === 'login') return <Login onSwitch={switchPage} />
-  if(page === 'signup') return <SignUp onSwitch={switchPage} />
-  return <Dashboard onSwitch={switchPage} />
+  function handleLogout() {
+    setIsLoggedIn(false);
+    setRole("seeker");
+  }
+
+  return (
+    <BrowserRouter>
+      <Routes>
+        <Route path="/login" element={<Login onLogin={handleLogin} />} />
+        <Route path="/signup" element={<SignUp onLogin={handleLogin} />} />
+        <Route
+          path={`/dashboard/${role}/*`}
+          element={
+            isLoggedIn ? (
+              <Dashboard role={role} onLogout={handleLogout} />
+            ) : (
+              <Navigate to="/login" replace />
+            )
+          }
+        />
+        <Route
+          path="*"
+          element={
+            <Navigate
+              to={isLoggedIn ? `/dashboard/${role}` : "/login"}
+              replace
+            />
+          }
+        />
+      </Routes>
+    </BrowserRouter>
+  );
 }

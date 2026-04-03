@@ -1,14 +1,18 @@
-import React, { useState } from 'react'
-import './SignUp.css'
-import Logo from '../assets/logo.svg'
+import React, { useState } from "react";
+import "./SignUp.css";
+import Logo from "../assets/logo.svg";
+import { useNavigate, Link } from "react-router-dom";
 
-export default function SignUp({ onSwitch }){
-  const [role, setRole] = useState('recruiter')
-  function handleCreate(e){
-    e.preventDefault()
-    localStorage.setItem('isLoggedIn','true')
-    onSwitch && onSwitch('dashboard')
+export default function SignUp({ onLogin }) {
+  const [role, setRole] = useState("seeker");
+  const navigate = useNavigate();
+
+  function handleCreate(e) {
+    e.preventDefault();
+    onLogin(role);
+    navigate(`/dashboard/${role}`);
   }
+
   return (
     <div className="signup-page">
       <div className="login-card">
@@ -16,40 +20,51 @@ export default function SignUp({ onSwitch }){
         <h2 className="brand">MatchHire AI</h2>
         <h1>Create Account</h1>
         <p className="subtitle">Start matching in minutes</p>
-
         <div className="role-row">
-          <button className={`role-btn ${role==='recruiter'? 'active':''}`} onClick={()=>setRole('recruiter')}>
+          <button
+            type="button"
+            className={`role-btn ${role === "recruiter" ? "active" : ""}`}
+            onClick={() => setRole("recruiter")}
+          >
             <div className="role-ico">🎁</div>
-            <div>Recruiter</div>
+            <div>Hiring</div>
           </button>
-
-          <button className={`role-btn ${role==='seeker'? 'active':''}`} onClick={()=>setRole('seeker')}>
+          <button
+            type="button"
+            className={`role-btn ${role === "seeker" ? "active" : ""}`}
+            onClick={() => setRole("seeker")}
+          >
             <div className="role-ico">🧭</div>
-            <div>Job Seeker</div>
+            <div>Seeking</div>
           </button>
         </div>
-
         <form className="signup-form" onSubmit={handleCreate}>
           <label className="field">
-            <span className="input-icon" aria-hidden>👤</span>
+            <span className="input-icon" aria-hidden="true">
+              👤
+            </span>
             <input type="text" placeholder="Full name" required />
           </label>
-
           <label className="field">
-            <span className="input-icon" aria-hidden>✉️</span>
+            <span className="input-icon" aria-hidden="true">
+              ✉️
+            </span>
             <input type="email" placeholder="Email address" required />
           </label>
-
           <label className="field">
-            <span className="input-icon" aria-hidden>🔒</span>
+            <span className="input-icon" aria-hidden="true">
+              🔒
+            </span>
             <input type="password" placeholder="Password" required />
           </label>
-
-          <button className="btn-primary" type="submit">Create Account <span className="arrow">→</span></button>
+          <button className="btn-primary" type="submit">
+            Create Account <span className="arrow">→</span>
+          </button>
         </form>
-
-        <p className="signup">Already have an account? <a href="#" onClick={(e)=>{e.preventDefault(); onSwitch && onSwitch('login')}}>Sign in</a></p>
+        <p className="signup">
+          Already have an account? <Link to="/login">Sign in</Link>
+        </p>
       </div>
     </div>
-  )
+  );
 }

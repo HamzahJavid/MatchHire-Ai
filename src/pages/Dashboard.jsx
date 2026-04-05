@@ -6,6 +6,10 @@ import RecruiterDashboard from "./RecruiterDashboard";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useEffect, useState } from "react";
 import "./Dashboard.css";
+import SeekerProfile from "./SeekerProfile";
+import SwipePage from "./SwipePage";
+import MatchesPage from "./MatchesPage";
+import AIPractice from "./AIPractice";
 
 const PlaceholderPage = ({ title }) => (
   <div className="content-card">
@@ -81,22 +85,10 @@ export default function Dashboard({ role = "seeker", onLogout }) {
 
           {role === "seeker" && (
             <>
-              <Route
-                path="profile"
-                element={<PlaceholderPage title="My Profile" />}
-              />
-              <Route
-                path="swipe"
-                element={<PlaceholderPage title="Swipe Jobs" />}
-              />
-              <Route
-                path="matches"
-                element={<PlaceholderPage title="Matches" />}
-              />
-              <Route
-                path="practice"
-                element={<PlaceholderPage title="AI Practice" />}
-              />
+              <Route path="profile" element={<SeekerProfile />} />
+              <Route path="swipe" element={<SwipePage />} />
+              <Route path="matches" element={<MatchesPage />} />
+              <Route path="practice" element={<AIPractice />} />
               <Route
                 path="settings"
                 element={<PlaceholderPage title="Settings" />}

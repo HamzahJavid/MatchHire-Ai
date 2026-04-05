@@ -1,0 +1,111 @@
+.ai-container {
+    max-width: 850px;
+    margin: auto;
+}
+
+/* Header */
+.ai-header h1 {
+    font-size: 26px;
+    font-weight: 700;
+}
+
+.ai-header p {
+    color: #9aa0ad;
+}
+
+/* Start Card */
+.ai-start-card {
+    background: #fff;
+    border: 1px solid #f0e9e6;
+    border-radius: 18px;
+    padding: 30px;
+    text-align: center;
+    box-shadow: 0 4px 12px rgba(43, 36, 36, 0.04);
+}
+
+/* Stats */
+.ai-stats {
+    display: flex;
+    justify-content: space-around;
+    margin: 20px 0;
+}
+
+.ai-stats h3 {
+    font-size: 20px;
+}
+
+/* Chat */
+.chat-box {
+    background: #fff;
+    border-radius: 18px;
+    border: 1px solid #f0e9e6;
+    display: flex;
+    flex-direction: column;
+    height: 450px;
+}
+
+.chat-messages {
+    flex: 1;
+    padding: 16px;
+    overflow-y: auto;
+}
+
+.chat-row {
+    margin-bottom: 10px;
+}
+
+.chat-row.user {
+    text-align: right;
+}
+
+.chat-bubble {
+    display: inline-block;
+    padding: 10px 14px;
+    border-radius: 12px;
+    background: #fdf8f6;
+}
+
+.chat-row.user .chat-bubble {
+    background: #ff7a3d;
+    color: #fff;
+}
+
+/* Input */
+.chat-input {
+    display: flex;
+    border-top: 1px solid #f0e9e6;
+}
+
+.chat-input input {
+    flex: 1;
+    border: none;
+    padding: 12px;
+    outline: none;
+}
+
+.chat-input button {
+    background: linear-gradient(90deg, #ff7a3d, #ff8a5a);
+    color: #fff;
+    border: none;
+    padding: 12px 16px;
+}
+
+/* Recruiter Config */
+.config-card {
+    background: #fff;
+    border: 1px solid #f0e9e6;
+    border-radius: 18px;
+    padding: 20px;
+}
+
+.question span {
+    background: #fdecea;
+    padding: 3px 8px;
+    border-radius: 6px;
+    font-size: 12px;
+}
+
+.criteria {
+    display: flex;
+    justify-content: space-between;
+}

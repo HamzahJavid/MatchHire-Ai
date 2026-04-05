@@ -1,0 +1,73 @@
+/* Container */
+.profile-container {
+    max-width: 860px;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+/* Header */
+.profile-title {
+    font-size: 26px;
+    font-weight: 700;
+    color: #0b1220;
+}
+
+.profile-subtitle {
+    font-size: 14px;
+    color: #9aa0ad;
+}
+
+/* Card */
+.profile-card {
+    background: #fff;
+    border: 1px solid #f0e9e6;
+    border-radius: 18px;
+    padding: 22px;
+    box-shadow: 0 4px 12px rgba(43, 36, 36, 0.04);
+}
+
+/* Inputs */
+.profile-input,
+.profile-textarea {
+    width: 100%;
+    padding: 11px 14px;
+    border-radius: 12px;
+    border: 1px solid #f0e9e6;
+    font-size: 14px;
+    background: #fdf8f6;
+}
+
+.profile-input:focus,
+.profile-textarea:focus {
+    outline: none;
+    border-color: #ff7a3d;
+}
+
+/* Grid */
+.profile-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+}
+
+/* Skills */
+.skill-tag {
+    background: #fdecea;
+    color: #1f2937;
+    padding: 6px 12px;
+    border-radius: 999px;
+    font-size: 13px;
+}
+
+/* Buttons */
+.profile-btn.primary {
+    background: linear-gradient(90deg, #ff7a3d, #ff8a5a);
+    color: white;
+    padding: 12px;
+    border-radius: 999px;
+    border: none;
+    cursor: pointer;
+    font-weight: 600;
+}

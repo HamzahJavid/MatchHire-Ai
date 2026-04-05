@@ -1,5 +1,7 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
+import PracticeCard from "../components/PracticeCard";
+import "../styles/AIPractice.css";
 
 const mockMessages = [
   {
@@ -55,29 +57,17 @@ export default function AIPractice({ role = "seeker" }) {
 
         {/* ===== SEEKER MODE ===== */}
         {role === "seeker" && !started ? (
-          <div className="ai-start-card">
-            <h2>Ready to Practice?</h2>
-            <p>Start a mock interview and improve your technical skills.</p>
-
-            <div className="ai-stats">
-              <div>
-                <h3>78</h3>
-                <p>Score</p>
-              </div>
-              <div>
-                <h3>12</h3>
-                <p>Sessions</p>
-              </div>
-              <div>
-                <h3>+8</h3>
-                <p>Growth</p>
-              </div>
-            </div>
-
-            <button className="btn primary" onClick={() => setStarted(true)}>
-              ▶ Start Practice
-            </button>
-          </div>
+          <PracticeCard
+            title="Ready to Practice?"
+            description="Our AI will conduct a mock technical interview based on your profile and skills. You'll receive a detailed feedback report and an updated readiness score."
+            stats={[
+              { value: "78", label: "Current Score" },
+              { value: "12", label: "Sessions" },
+              { value: "+8", label: "Improvement" },
+            ]}
+            buttonText="▶ Start Practice Session"
+            onAction={() => setStarted(true)}
+          />
         ) : role === "seeker" ? (
           /* ===== CHAT ===== */
           <div className="chat-box">

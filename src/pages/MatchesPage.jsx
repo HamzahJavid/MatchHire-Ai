@@ -1,5 +1,6 @@
-import { useState } from "react";
 import { motion } from "framer-motion";
+import MatchCard from "../components/MatchCard";
+import "../styles/MatchesPage.css";
 
 const recruiterMatches = [
   {
@@ -69,67 +70,10 @@ export default function MatchesPage({ role = "seeker" }) {
         {/* List */}
         <div className="matches-list">
           {matches.map((match) => (
-            <motion.div
-              key={match.id}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="match-card"
-            >
-              <div className="match-top">
-                <div className="match-info">
-                  <div className="avatar">{match.name.charAt(0)}</div>
-
-                  <div>
-                    <h3>{match.name}</h3>
-                    <p>{match.role}</p>
-                  </div>
-                </div>
-
-                <div className="match-stats">
-                  <div>
-                    <span className="score">{match.matchScore}%</span>
-                    <p>Match</p>
-                  </div>
-
-                  {match.aiScore && (
-                    <div>
-                      <span className="score ai">{match.aiScore}</span>
-                      <p>AI Score</p>
-                    </div>
-                  )}
-
-                  <span className={`status ${getStatusClass(match.status)}`}>
-                    {match.status}
-                  </span>
-                </div>
-              </div>
-
-              {/* Actions */}
-              <div className="match-actions">
-                <button className="btn">💬 Message</button>
-
-                {match.aiScore === null && (
-                  <button className="btn primary">🎥 Start AI Interview</button>
-                )}
-
-                {match.status.includes("Interview") &&
-                  match.status !== "Matched" && (
-                    <button className="btn outline">
-                      📅 Schedule Final Round
-                    </button>
-                  )}
-              </div>
-            </motion.div>
+            <MatchCard key={match.id} data={match} />
           ))}
         </div>
       </motion.div>
     </div>
   );
-}
-
-/* Helper */
-function getStatusClass(status) {
-  if (status === "Matched") return "matched";
-  if (status.includes("Interview")) return "interview";
-  return "default";
 }

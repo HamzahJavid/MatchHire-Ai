@@ -1,5 +1,7 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import JobCard from "../components/JobCard";
+import "../styles/SwipePage.css";
 
 const mockCandidates = [
   {
@@ -67,22 +69,18 @@ const mockJobs = [
 
 export default function SwipePage({ role = "seeker" }) {
   const cards = role === "recruiter" ? mockCandidates : mockJobs;
-
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [swipeDirection, setSwipeDirection] = useState(null);
 
   function handleSwipe(direction) {
-    setSwipeDirection(direction);
-    setTimeout(() => {
-      setSwipeDirection(null);
-      setCurrentIndex((prev) => prev + 1);
-    }, 400);
+    if (currentIndex < cards.length) {
+        setCurrentIndex((prev) => prev + 1);
+    }
   }
 
   const currentCard = cards[currentIndex];
 
   return (
-    <div className="swipe-container">
+    <div className="swipe-page-container">
       <div className="swipe-header">
         <h1>{role === "recruiter" ? "Swipe Candidates" : "Swipe Jobs"}</h1>
         <p>
@@ -93,67 +91,56 @@ export default function SwipePage({ role = "seeker" }) {
       </div>
 
       <div className="swipe-card-wrapper">
-        <AnimatePresence>
+        <AnimatePresence mode="wait">
           {currentCard ? (
             <motion.div
               key={currentCard.id}
-              initial={{ scale: 0.95, opacity: 0 }}
-              animate={
-                swipeDirection === "right"
-                  ? { x: 300, rotate: 12, opacity: 0 }
-                  : swipeDirection === "left"
-                    ? { x: -300, rotate: -12, opacity: 0 }
-                    : { scale: 1, opacity: 1, x: 0, rotate: 0 }
-              }
-              transition={{ duration: 0.4 }}
-              className="swipe-card"
+              initial={{ scale: 0.9, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.9, opacity: 0, x: 100 }}
+              transition={{ type: "spring", stiffness: 300, damping: 25 }}
+              className="motion-wrapper"
             >
-              {/* Header */}
-              <div className="card-header">
-                <div>
-                  <h2>{currentCard.title}</h2>
-                  <p>{currentCard.subtitle}</p>
-                </div>
-                <div className="match-score">{currentCard.matchScore}%</div>
-              </div>
-
-              {/* Location */}
-              <p className="location">{currentCard.location}</p>
-
-              {/* Description */}
-              <p className="description">{currentCard.description}</p>
-
-              {/* Skills */}
-              <div className="skills">
-                {currentCard.skills.map((skill) => (
-                  <span key={skill} className="skill">
-                    {skill}
-                  </span>
-                ))}
-              </div>
-
-              <div className="card-count">
-                Card {currentIndex + 1} of {cards.length}
-              </div>
+              <JobCard 
+                data={currentCard} 
+                cardIndex={currentIndex + 1} 
+                totalCards={cards.length} 
+              />
             </motion.div>
           ) : (
-            <div className="swipe-card empty">
-              <h3>All caught up!</h3>
-              <p>Check back later for new matches.</p>
-            </div>
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="no-more-cards"
+            >
+              <h3>No more {role === "recruiter" ? "candidates" : "jobs"}!</h3>
+              <p>Check back later or update your profile.</p>
+              <button 
+                className="reset-btn"
+                onClick={() => setCurrentIndex(0)}
+              >
+                Start Over
+              </button>
+            </motion.div>
           )}
         </AnimatePresence>
       </div>
 
-      {/* Buttons */}
       {currentCard && (
         <div className="swipe-actions">
-          <button className="btn reject" onClick={() => handleSwipe("left")}>
-            ✕
+          <button 
+            className="swipe-btn reject" 
+            onClick={() => handleSwipe("left")}
+            aria-label="Reject"
+          >
+            <span className="icon">✕</span>
           </button>
-
-          <button className="btn accept" onClick={() => handleSwipe("right")}>
-            ❤️
+          <button 
+            className="swipe-btn accept" 
+            onClick={() => handleSwipe("right")}
+            aria-label="Accept"
+          >
+            <span className="icon">❤</span>
           </button>
         </div>
       )}

@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
+import "../styles/SeekerProfile.css";
 
 export default function SeekerProfile() {
   const [skills, setSkills] = useState([
@@ -14,53 +15,89 @@ export default function SeekerProfile() {
     <motion.div
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
-      className="content-card"
-      style={{ maxWidth: "800px" }}
+      className="profile-page"
     >
-      <h1>My Profile</h1>
-      <p>Keep your profile updated for better matches.</p>
+      <header className="profile-header">
+        <h1>My Profile</h1>
+        <p>Keep your profile updated for better matches.</p>
+      </header>
 
-      {/* Resume Upload */}
-      <div className="card">
-        <h3>Upload Resume</h3>
-        <button className="btn">Choose File</button>
-      </div>
-
-      {/* Form */}
-      <div className="card">
-        <h3>Personal Information</h3>
-
-        <div className="grid">
-          <input placeholder="First Name" />
-          <input placeholder="Last Name" />
+      {/* Resume Upload - Matching the design */}
+      <section className="upload-section">
+        <div className="upload-icon-wrapper">
+          <span className="upload-icon">📤</span>
         </div>
+        <h3>Upload Your Resume</h3>
+        <p>Our AI will parse your resume and auto-fill your profile</p>
+        <button className="upload-btn">
+          <span>📄</span> Choose File
+        </button>
+        <div className="file-info">PDF, DOCX up to 5MB</div>
+      </section>
 
-        <input placeholder="Title (Full Stack Developer)" />
-        <textarea placeholder="Tell recruiters about yourself..." />
-        <input placeholder="Location" />
-      </div>
+      {/* Personal Information */}
+      <section className="profile-form-section">
+        <h3>Personal Information</h3>
+        <div className="form-grid">
+          <div className="form-group">
+            <label className="form-label">First Name</label>
+            <input className="form-input" placeholder="First Name" />
+          </div>
+          <div className="form-group">
+            <label className="form-label">Last Name</label>
+            <input className="form-input" placeholder="Last Name" />
+          </div>
+        </div>
+        <div className="form-group">
+          <label className="form-label">Title</label>
+          <input className="form-input" placeholder="e.g. Full Stack Developer" />
+        </div>
+        <div className="form-group">
+          <label className="form-label">Bio</label>
+          <textarea 
+            className="form-textarea" 
+            placeholder="Tell recruiters about yourself..." 
+          />
+        </div>
+        <div className="form-group">
+          <label className="form-label">Location</label>
+          <input className="form-input" placeholder="City, Country" />
+        </div>
+      </section>
 
       {/* Skills */}
-      <div className="card">
+      <section className="profile-form-section">
         <h3>Skills</h3>
-        <div className="skills">
+        <div className="skills-container">
           {skills.map((s, i) => (
             <span key={i} className="skill-tag">
               {s}
             </span>
           ))}
+          <button className="add-skill-btn">+ Add Skill</button>
         </div>
-      </div>
+      </section>
 
       {/* Links */}
-      <div className="card">
+      <section className="profile-form-section">
         <h3>Links</h3>
-        <input placeholder="GitHub URL" />
-        <input placeholder="LinkedIn URL" />
-        <input placeholder="Portfolio URL" />
-      </div>
+        <div className="form-group">
+          <label className="form-label">GitHub URL</label>
+          <input className="form-input" placeholder="https://github.com/..." />
+        </div>
+        <div className="form-group">
+          <label className="form-label">LinkedIn URL</label>
+          <input className="form-input" placeholder="https://linkedin.com/in/..." />
+        </div>
+        <div className="form-group">
+          <label className="form-label">Portfolio URL</label>
+          <input className="form-input" placeholder="https://..." />
+        </div>
+      </section>
 
-      <button className="btn primary">Save Profile</button>
+      <div className="form-actions">
+        <button className="save-btn">Save Profile</button>
+      </div>
     </motion.div>
   );
 }

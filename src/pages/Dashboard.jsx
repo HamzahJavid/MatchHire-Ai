@@ -10,6 +10,8 @@ import SeekerProfile from "./SeekerProfile";
 import SwipePage from "./SwipePage";
 import MatchesPage from "./MatchesPage";
 import AIPractice from "./AIPractice";
+import PostJob from "./PostJob";
+import AIInterview from "./AIInterview";
 
 const PlaceholderPage = ({ title }) => (
   <div className="content-card">
@@ -100,7 +102,7 @@ export default function Dashboard({ role = "seeker", onLogout }) {
             <>
               <Route
                 path="post-job"
-                element={<PlaceholderPage title="Post Job" />}
+                element={<PostJob />}
               />
               <Route
                 path="swipe"
@@ -112,7 +114,7 @@ export default function Dashboard({ role = "seeker", onLogout }) {
               />
               <Route
                 path="interviews"
-                element={<PlaceholderPage title="AI Interviews" />}
+                element={<AIInterview />}
               />
               <Route
                 path="settings"

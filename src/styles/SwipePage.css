@@ -1,0 +1,73 @@
+.swipe-container {
+    max-width: 420px;
+    margin: 0 auto;
+    text-align: center;
+}
+
+/* Header */
+.swipe-header h1 {
+    font-size: 26px;
+    font-weight: 700;
+}
+
+.swipe-header p {
+    color: #9aa0ad;
+    font-size: 14px;
+    margin-bottom: 20px;
+}
+
+/* Card */
+.swipe-card {
+    background: #fff;
+    border: 1px solid #f0e9e6;
+    border-radius: 20px;
+    padding: 22px;
+    box-shadow: 0 6px 18px rgba(43, 36, 36, 0.06);
+    text-align: left;
+}
+
+.card-header {
+    display: flex;
+    justify-content: space-between;
+}
+
+.match-score {
+    background: linear-gradient(90deg, #ff7a3d, #ff8a5a);
+    color: #fff;
+    padding: 6px 12px;
+    border-radius: 999px;
+    font-weight: 700;
+}
+
+/* Skills */
+.skill {
+    background: #fdecea;
+    padding: 5px 10px;
+    border-radius: 999px;
+    font-size: 12px;
+}
+
+/* Buttons */
+.swipe-actions {
+    display: flex;
+    justify-content: center;
+    gap: 20px;
+    margin-top: 20px;
+}
+
+.btn.accept {
+    background: linear-gradient(90deg, #ff7a3d, #ff8a5a);
+    color: white;
+    border-radius: 50%;
+    width: 60px;
+    height: 60px;
+    font-size: 20px;
+}
+
+.btn.reject {
+    background: #fff;
+    border: 2px solid #f0e9e6;
+    border-radius: 50%;
+    width: 60px;
+    height: 60px;
+}

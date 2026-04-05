@@ -1,0 +1,64 @@
+.matches-container {
+    max-width: 900px;
+    margin: auto;
+}
+
+/* Header */
+.matches-header h1 {
+    font-size: 26px;
+    font-weight: 700;
+}
+
+.matches-header p {
+    color: #9aa0ad;
+    margin-bottom: 20px;
+}
+
+/* Card */
+.match-card {
+    background: #fff;
+    border: 1px solid #f0e9e6;
+    border-radius: 18px;
+    padding: 20px;
+    box-shadow: 0 4px 12px rgba(43, 36, 36, 0.04);
+}
+
+/* Avatar */
+.avatar {
+    background: linear-gradient(135deg, #ff7a3d, #ff8a5a);
+    color: #fff;
+    border-radius: 12px;
+    width: 48px;
+    height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+}
+
+/* Status */
+.status {
+    padding: 4px 10px;
+    border-radius: 999px;
+    font-size: 12px;
+}
+
+.status.matched {
+    background: #fdecea;
+}
+
+.status.interview {
+    background: #ccede8;
+}
+
+/* Buttons */
+.match-actions .btn {
+    border-radius: 999px;
+    padding: 8px 14px;
+    font-size: 13px;
+}
+
+.btn.primary {
+    background: linear-gradient(90deg, #ff7a3d, #ff8a5a);
+    color: white;
+}

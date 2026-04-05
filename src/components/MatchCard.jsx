@@ -1,6 +1,6 @@
 import { motion } from "framer-motion";
 
-export default function MatchCard({ data }) {
+export default function MatchCard({ data, role = "seeker" }) {
   const statusClass = getStatusClass(data.status);
 
   return (
@@ -39,12 +39,18 @@ export default function MatchCard({ data }) {
       <div className="match-actions">
         <button className="btn">💬 Message</button>
 
-        {data.aiScore === null && (
-          <button className="btn primary">🎥 Start AI Interview</button>
-        )}
-
-        {data.status.includes("Interview") && data.status !== "Matched" && (
-          <button className="btn outline">📅 Schedule Final Round</button>
+        {role === "recruiter" ? (
+          data.aiScore === null ? (
+            <button className="btn primary">🎥 Start AI Interview</button>
+          ) : data.status.includes("Interview") && data.status !== "Matched" ? (
+            <button className="btn outline">📅 Schedule Final Round</button>
+          ) : null
+        ) : (
+          data.aiScore === null ? (
+            <button className="btn primary">🎥 Take AI Interview</button>
+          ) : data.status.includes("Interview") && data.status !== "Matched" ? (
+            <button className="btn outline">📅 View Interview</button>
+          ) : null
         )}
       </div>
     </motion.div>

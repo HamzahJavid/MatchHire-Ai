@@ -104,11 +104,11 @@ export default function Dashboard({ role = "seeker", onLogout }) {
               />
               <Route
                 path="swipe"
-                element={<PlaceholderPage title="Swipe Candidates" />}
+                element={<SwipePage role="recruiter" />}
               />
               <Route
                 path="matches"
-                element={<PlaceholderPage title="Matches" />}
+                element={<MatchesPage role="recruiter" />}
               />
               <Route
                 path="interviews"

@@ -73,7 +73,7 @@ export default function SwipePage({ role = "seeker" }) {
 
   function handleSwipe(direction) {
     if (currentIndex < cards.length) {
-        setCurrentIndex((prev) => prev + 1);
+      setCurrentIndex((prev) => prev + 1);
     }
   }
 

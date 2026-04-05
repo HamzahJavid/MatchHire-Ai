@@ -70,7 +70,7 @@ export default function MatchesPage({ role = "seeker" }) {
         {/* List */}
         <div className="matches-list">
           {matches.map((match) => (
-            <MatchCard key={match.id} data={match} />
+            <MatchCard key={match.id} data={match} role={role} />
           ))}
         </div>
       </motion.div>

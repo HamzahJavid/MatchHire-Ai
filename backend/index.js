@@ -3,6 +3,12 @@ const cors = require("cors");
 const helmet = require("helmet");
 const fs = require("fs");
 const resumeRoutes = require("./routes/resumeRoutes");
+const swaggerUi = require("swagger-ui-express");
+const swaggerDocument = require("./swagger.json");
+const mongoose = require("mongoose");
+require("dotenv").config();
+const authRoutes = require("./routes/authRoutes");
+const profileRoutes = require("./routes/profileRoutes");
 
 const app = express();
 const PORT = process.env.PORT || 4000;
@@ -17,7 +23,11 @@ app.use(
 );
 app.use(express.json());
 
+app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerDocument));
+
 app.use("/api/resume", resumeRoutes);
+app.use("/api/auth", authRoutes);
+app.use("/api/me", profileRoutes);
 app.get("/health", (_req, res) => res.json({ status: "ok" }));
 
 app.use((err, _req, res, _next) => {
@@ -28,6 +38,17 @@ app.use((err, _req, res, _next) => {
   res.status(500).json({ success: false, error: err.message });
 });
 
-app.listen(PORT, () =>
-  console.log(`Resume parser running on http://localhost:${PORT}`),
-);
+const MONGO_URI = process.env.MONGO_URI || "mongodb://localhost:27017/matchhire";
+
+mongoose
+  .connect(MONGO_URI)
+  .then(() => {
+    console.log("Connected to MongoDB");
+    app.listen(PORT, () =>
+      console.log(`Resume parser running on http://localhost:${PORT}`),
+    );
+  })
+  .catch((err) => {
+    console.error("Failed to connect to MongoDB:", err.message);
+    process.exit(1);
+  });

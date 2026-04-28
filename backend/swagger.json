@@ -1,0 +1,178 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "MatchHire-AI Backend API",
+    "version": "1.0.0",
+    "description": "API documentation for the MatchHire-AI backend."
+  },
+  "servers": [
+    { "url": "http://localhost:4000" }
+  ],
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      }
+    }
+  },
+  "paths": {
+    "/api/auth/signin": {
+      "post": {
+        "summary": "Sign in",
+        "description": "Sign in with email and password. Returns access and refresh JWT tokens.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "email": { "type": "string", "format": "email" },
+                  "password": { "type": "string" }
+                },
+                "required": ["email", "password"],
+                "example": { "email": "alice@example.com", "password": "Str0ng!Pass1" }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Tokens and user",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "accessToken": { "type": "string" },
+                    "refreshToken": { "type": "string" },
+                    "user": { "type": "object" }
+                  }
+                }
+              }
+            }
+          },
+          "400": { "description": "Bad request" },
+          "401": { "description": "Invalid credentials" },
+          "500": { "description": "Server error" }
+        }
+      }
+    },
+    "/api/auth/signup": {
+      "post": {
+        "summary": "Sign up",
+        "description": "Create a new user account. Returns access and refresh JWT tokens.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "fullName": { "type": "string" },
+                  "email": { "type": "string", "format": "email" },
+                  "password": { "type": "string" },
+                  "hasSeeker": { "type": "boolean" },
+                  "hasHirer": { "type": "boolean" }
+                },
+                "required": ["fullName", "email", "password", "hasSeeker", "hasHirer"],
+                "example": {
+                  "fullName": "Alice Johnson",
+                  "email": "alice@example.com",
+                  "password": "Str0ng!Pass1",
+                  "hasSeeker": true,
+                  "hasHirer": false
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": { "description": "Created - returns tokens and user" },
+          "400": { "description": "Validation error" },
+          "409": { "description": "Email already registered" },
+          "500": { "description": "Server error" }
+        }
+      }
+    },
+    "/api/resume/parse": {
+      "post": {
+        "summary": "Parse resume file",
+        "description": "Upload a resume file (PDF or DOCX) and parse its contents into structured data.",
+        "security": [{ "bearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "file": { "type": "string", "format": "binary" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Parsed and saved SeekerProfile",
+            "content": {
+              "application/json": { "schema": { "type": "object" } }
+            }
+          },
+          "422": { "description": "Missing required sections (experience|education|skills)" },
+          "413": { "description": "File too large" },
+          "500": { "description": "Server error" }
+        }
+      }
+    }
+    ,
+    "/api/me/profile": {
+      "put": {
+        "summary": "Update seeker personal info",
+        "description": "Protected route. Update firstName, lastName, title, bio, location, githubUrl, linkedinUrl, portfolioUrl and add skills (no duplicates).",
+        "security": [{ "bearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "firstName": { "type": "string" },
+                  "lastName": { "type": "string" },
+                  "title": { "type": "string" },
+                  "bio": { "type": "string" },
+                  "location": { "type": "string" },
+                  "skills": { "type": "array", "items": { "type": "string" } },
+                  "githubUrl": { "type": "string", "format": "uri" },
+                  "linkedinUrl": { "type": "string", "format": "uri" },
+                  "portfolioUrl": { "type": "string", "format": "uri" }
+                },
+                "example": {
+                  "firstName": "Alice",
+                  "lastName": "Johnson",
+                  "title": "Senior Backend Engineer",
+                  "bio": "Experienced backend engineer building scalable APIs.",
+                  "location": "Lahore, Pakistan",
+                  "skills": ["Node.js", "MongoDB", "Docker"],
+                  "githubUrl": "https://github.com/alice",
+                  "linkedinUrl": "https://linkedin.com/in/alice",
+                  "portfolioUrl": "https://alice.dev"
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Updated SeekerProfile returned" },
+          "400": { "description": "Validation error" },
+          "401": { "description": "Unauthorized" },
+          "500": { "description": "Server error" }
+        }
+      }
+    }
+  }
+}

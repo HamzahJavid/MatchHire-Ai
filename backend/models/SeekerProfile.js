@@ -89,6 +89,7 @@ const seekerProfileSchema = new mongoose.Schema(
     location: { type: String },
     portfolioUrl: { type: String },
     linkedinUrl: { type: String },
+    githubUrl: { type: String },
 
     skills: [skillSchema],
     experience: [experienceSchema],

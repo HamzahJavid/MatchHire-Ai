@@ -1,44 +1,7 @@
 const mongoose = require("mongoose");
 
-// ── Sub-schemas ────────────────────────────────────────────────────────────────
-
-const experienceSchema = new mongoose.Schema(
-  {
-    title: { type: String, required: true },
-    company: { type: String, required: true },
-    location: { type: String },
-    startDate: { type: Date, required: true },
-    endDate: { type: Date }, // null = current
-    isCurrent: { type: Boolean, default: false },
-    description: { type: String },
-  },
-  { _id: false },
-);
-
-const educationSchema = new mongoose.Schema(
-  {
-    institution: { type: String, required: true },
-    degree: { type: String }, // e.g. "BSc", "MSc"
-    fieldOfStudy: { type: String },
-    startYear: { type: Number },
-    endYear: { type: Number },
-    grade: { type: String },
-  },
-  { _id: false },
-);
-
-const skillSchema = new mongoose.Schema(
-  {
-    name: { type: String, required: true },
-    level: {
-      type: String,
-      enum: ["beginner", "intermediate", "advanced", "expert"],
-    },
-    yearsOfExp: { type: Number },
-    source: { type: String, enum: ["cv_parsed", "manual"], default: "manual" },
-  },
-  { _id: false },
-);
+// Using separate collections for experience, education and skills.
+// These will be referenced by ObjectId in the seeker profile.
 
 // ── AI Readiness ───────────────────────────────────────────────────────────────
 // Tag derived from CV parse quality + skills coverage
@@ -91,9 +54,9 @@ const seekerProfileSchema = new mongoose.Schema(
     linkedinUrl: { type: String },
     githubUrl: { type: String },
 
-    skills: [skillSchema],
-    experience: [experienceSchema],
-    education: [educationSchema],
+    skills: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Skill' }],
+    experience: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Experience' }],
+    education: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Education' }],
 
     // Computed fields
     totalYearsOfExperience: { type: Number, default: 0 },
@@ -103,7 +66,7 @@ const seekerProfileSchema = new mongoose.Schema(
     },
 
     // Profile strength (0-100), computed server-side
-    profileStrength: { type: Number, min: 0, max: 100, default: 0 },
+    profileStrength: { type: Number, min: 0, max: 100, default: null },
 
     // AI readiness
     aiReadiness: { type: aiReadinessSchema, default: () => ({}) },
@@ -115,6 +78,8 @@ const seekerProfileSchema = new mongoose.Schema(
       leftSwipes: { type: Number, default: 0 },
       totalMatches: { type: Number, default: 0 },
     },
+    // list of job ids the seeker has swiped on (denormalised)
+    jobsSwiped: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Job' }],
 
     // Job preferences
     preferences: {
@@ -139,7 +104,6 @@ const seekerProfileSchema = new mongoose.Schema(
 
 // Index for geolocation / location-based queries
 seekerProfileSchema.index({ user: 1 });
-seekerProfileSchema.index({ "skills.name": 1 });
 seekerProfileSchema.index({ profileStrength: -1 });
 
 module.exports = mongoose.model("SeekerProfile", seekerProfileSchema);

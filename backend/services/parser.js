@@ -398,8 +398,8 @@ function extractKeywords(text, topN = 8) {
     .slice(0, topN)
     .map((t) => t.term);
 }
-
-function parseResume(text) {
+// Local (heuristic) parser kept as fallback
+function parseResumeLocal(text) {
   const lines = text.split("\n");
   const sections = splitSections(lines);
   const contact = extractContact(text);
@@ -420,6 +420,110 @@ function parseResume(text) {
     keywords: extractKeywords(text),
     _sections: Object.keys(sections),
   };
+}
+
+// AI-based parser using Google Generative AI SDK
+// Falls back to the local parser if the AI call fails or no key is present.
+const dotenv = require('dotenv');
+const { GoogleGenerativeAI } = require('@google/generative-ai');
+
+dotenv.config();
+const API_KEY = process.env.GEMINI_API_KEY || process.env.GEN_API_KEY || process.env.GOOGLE_API_KEY;
+
+async function parseResumeWithAI(text) {
+  if (!API_KEY) throw new Error('No GEMINI_API_KEY found in environment');
+
+  console.log('[AI PARSER] Initializing Google Generative AI with API key...');
+  const genAI = new GoogleGenerativeAI(API_KEY);
+  
+  // List candidate models and pick the first one that works
+  let model;
+  const modelsToTry = ['gemini-2.5-flash', 'gemini-2.5-flash-lite', 'gemini-2.0-flash'];
+  let lastError;
+
+  for (const modelName of modelsToTry) {
+    try {
+      console.log(`[AI PARSER] Attempting model: ${modelName}`);
+      model = genAI.getGenerativeModel({ model: modelName });
+      
+      const prompt = `You are an expert resume parser. Extract ALL information from the provided resume and return ONLY a valid JSON object. No markdown, no explanation, just pure JSON.
+
+EXTRACT EVERYTHING YOU CAN FIND:
+- Pull out all work experience entries
+- Pull out all education entries  
+- Extract all skills mentioned
+- Get personal info: name, title/headline, bio/summary, location
+- For dates, convert to YYYY-MM-DD format if possible
+
+Return ONLY this JSON structure (no markdown, no code blocks):
+{
+  "firstName": "extracted or null",
+  "lastName": "extracted or null",
+  "title": "job title or headline or null",
+  "bio": "summary/objective or null",
+  "location": "city, state or null",
+  "experience": [
+    {
+      "title": "job title",
+      "company": "company name",
+      "location": "job location or null",
+      "startDate": "YYYY-MM-DD or null",
+      "endDate": "YYYY-MM-DD or null",
+      "isCurrent": true or false,
+      "bullets": ["responsibility 1", "responsibility 2"]
+    }
+  ],
+  "education": [
+    {
+      "institution": "school/university name",
+      "degree": "degree type (BS, MS, PhD, etc) or null",
+      "fieldOfStudy": "major/field or null",
+      "startYear": 2020 or null,
+      "endYear": 2024 or null,
+      "gpa": "3.8 or null"
+    }
+  ],
+  "skills": ["Skill1", "Skill2", "Skill3"]
+}
+
+RESUME TEXT TO PARSE:
+${text}`;
+
+      console.log(`[AI PARSER] Sending resume to Gemini AI (model: ${modelName})...`);
+      const result = await model.generateContent(prompt);
+      const response = result.response;
+      const rawText = response.text();
+      
+      console.log('[AI PARSER RAW RESPONSE]:', rawText);
+
+      // Extract JSON from the response
+      const jsonMatch = rawText.match(/\{[\s\S]*\}/);
+      if (!jsonMatch) {
+        throw new Error('AI response did not contain valid JSON. Raw response: ' + rawText);
+      }
+
+      console.log('[AI PARSER] Extracted JSON match');
+      const parsed = JSON.parse(jsonMatch[0]);
+      parsed._ai_raw = rawText;
+      
+      console.log(`[AI PARSER] Successfully parsed AI response with model: ${modelName}`);
+      return parsed;
+
+    } catch (err) {
+      console.warn(`[AI PARSER] Model ${modelName} failed:`, err.message);
+      lastError = err;
+      continue;
+    }
+  }
+
+  // If all models failed, throw the last error
+  throw new Error(`All Gemini models failed. Last error: ${lastError?.message || 'unknown error'}`);
+}
+
+async function parseResume(text) {
+  console.log('[PARSER] Using ONLY AI (Gemini) for parsing - no local fallback');
+  console.log('[PARSER] Resume text length:', text.length);
+  return await parseResumeWithAI(text);
 }
 
 module.exports = { parseResume };

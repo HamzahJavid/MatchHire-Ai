@@ -127,12 +127,522 @@
           "500": { "description": "Server error" }
         }
       }
-    }
-    ,
+    },
+    "/api/resume": {
+      "patch": {
+        "summary": "Update resume profile data",
+        "description": "Update the current user's resume and parsed profile fields without uploading a file.",
+        "security": [{ "bearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "headline": { "type": "string" },
+                  "summary": { "type": "string" },
+                  "location": { "type": "string" },
+                  "skills": { "type": "array", "items": { "type": ["string", "object"] } },
+                  "experience": { "type": "array", "items": { "type": "object" } },
+                  "education": { "type": "array", "items": { "type": "object" } }
+                },
+                "example": {
+                  "headline": "Senior Software Engineer",
+                  "summary": "Experienced engineer with a focus on backend systems.",
+                  "location": "Lahore, Pakistan",
+                  "skills": ["Node.js", { "name": "MongoDB", "level": "advanced" }],
+                  "experience": [{ "title": "Backend Developer", "company": "MatchHire", "location": "Lahore", "startDate": "2023-01-01", "endDate": "2024-01-01", "description": "Built REST APIs." }],
+                  "education": [{ "institution": "LUMS", "degree": "Bachelors", "fieldOfStudy": "Computer Science", "startYear": 2018, "endYear": 2022 }]
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Updated resume profile data" },
+          "400": { "description": "Validation error" },
+          "401": { "description": "Unauthorized" },
+          "404": { "description": "Seeker profile not found" },
+          "500": { "description": "Server error" }
+        }
+      }
+    },
+    "/api/jobs": {
+      "post": {
+        "summary": "Post a new job",
+        "description": "Create a job listing. Only authenticated hirer users may create jobs.",
+        "security": [{ "bearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "title": { "type": "string" },
+                  "company": { "type": "string" },
+                  "location": {
+                    "oneOf": [
+                      { "type": "string" },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "city": { "type": "string" },
+                          "country": { "type": "string" },
+                          "isRemote": { "type": "boolean" },
+                          "rangeKm": { "type": "number" }
+                        }
+                      }
+                    ]
+                  },
+                  "salaryRange": {
+                    "type": "object",
+                    "properties": {
+                      "min": { "type": "number" },
+                      "max": { "type": "number" },
+                      "currency": { "type": "string" },
+                      "period": { "type": "string" }
+                    }
+                  },
+                  "description": { "type": "string" },
+                  "requiredSkills": { "type": "array", "items": { "type": ["string", "object"] } },
+                  "minYearsOfExperience": { "type": "number" },
+                  "educationRequirement": { "type": "string" },
+                  "preferredUniversities": { "type": "array", "items": { "type": "string" } },
+                  "jobType": { "type": "string", "enum": ["full_time", "part_time", "contract", "internship", "remote"] }
+                },
+                "required": ["title", "company", "description", "salaryRange", "requiredSkills", "minYearsOfExperience", "educationRequirement"],
+                "example": {
+                  "title": "Senior Backend Engineer",
+                  "company": "MatchHire Labs",
+                  "location": { "city": "Karachi", "country": "Pakistan", "isRemote": false },
+                  "salaryRange": { "min": 50000, "max": 70000, "currency": "USD", "period": "annual" },
+                  "description": "Build and maintain scalable APIs for our hiring platform.",
+                  "requiredSkills": ["Node.js", "MongoDB", "AWS"],
+                  "minYearsOfExperience": 3,
+                  "educationRequirement": "Bachelors in Computer Science",
+                  "preferredUniversities": ["LUMS", "NUST"]
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created job listing",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean" },
+                    "data": { "type": "object" }
+                  }
+                }
+              }
+            }
+          },
+          "400": { "description": "Validation error" },
+          "401": { "description": "Unauthorized" },
+          "403": { "description": "Hirer account required" },
+          "500": { "description": "Server error" }
+        }
+      },
+      "put": {
+        "summary": "Replace a job listing",
+        "description": "Replace job details for a job owned by the authenticated hirer.",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "title": { "type": "string" },
+                  "company": { "type": "string" },
+                  "location": {
+                    "oneOf": [
+                      { "type": "string" },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "city": { "type": "string" },
+                          "country": { "type": "string" },
+                          "isRemote": { "type": "boolean" },
+                          "rangeKm": { "type": "number" }
+                        }
+                      }
+                    ]
+                  },
+                  "salaryRange": {
+                    "type": "object",
+                    "properties": {
+                      "min": { "type": "number" },
+                      "max": { "type": "number" },
+                      "currency": { "type": "string" },
+                      "period": { "type": "string" }
+                    }
+                  },
+                  "description": { "type": "string" },
+                  "requiredSkills": { "type": "array", "items": { "type": ["string", "object"] } },
+                  "minYearsOfExperience": { "type": "number" },
+                  "educationRequirement": { "type": "string" },
+                  "preferredUniversities": { "type": "array", "items": { "type": "string" } },
+                  "jobType": { "type": "string", "enum": ["full_time", "part_time", "contract", "internship", "remote"] },
+                  "status": { "type": "string", "enum": ["draft", "active", "paused", "closed", "expired"] },
+                  "publishedAt": { "type": "string", "format": "date-time" },
+                  "expiresAt": { "type": "string", "format": "date-time" }
+                },
+                "required": ["title", "company", "description", "salaryRange", "requiredSkills", "minYearsOfExperience", "educationRequirement"],
+                "example": {
+                  "title": "Senior Backend Engineer",
+                  "company": "MatchHire Labs",
+                  "location": { "city": "Karachi", "country": "Pakistan", "isRemote": false },
+                  "salaryRange": { "min": 50000, "max": 70000, "currency": "USD", "period": "annual" },
+                  "description": "Build and maintain scalable APIs for our hiring platform.",
+                  "requiredSkills": ["Node.js", "MongoDB", "AWS"],
+                  "minYearsOfExperience": 3,
+                  "educationRequirement": "Bachelors in Computer Science",
+                  "preferredUniversities": ["LUMS", "NUST"],
+                  "status": "active",
+                  "publishedAt": "2026-05-01T00:00:00Z",
+                  "expiresAt": "2026-08-01T00:00:00Z"
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Updated job listing" },
+          "400": { "description": "Validation error" },
+          "401": { "description": "Unauthorized" },
+          "403": { "description": "Hirer account required" },
+          "404": { "description": "Job not found" },
+          "500": { "description": "Server error" }
+        }
+      },
+      "patch": {
+        "summary": "Partially update a job",
+        "description": "Update one or more fields on a job owned by the authenticated hirer.",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "title": { "type": "string" },
+                  "company": { "type": "string" },
+                  "location": {
+                    "oneOf": [
+                      { "type": "string" },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "city": { "type": "string" },
+                          "country": { "type": "string" },
+                          "isRemote": { "type": "boolean" },
+                          "rangeKm": { "type": "number" }
+                        }
+                      }
+                    ]
+                  },
+                  "salaryRange": { "type": "object" },
+                  "description": { "type": "string" },
+                  "requiredSkills": { "type": "array", "items": { "type": ["string", "object"] } },
+                  "minYearsOfExperience": { "type": "number" },
+                  "educationRequirement": { "type": "string" },
+                  "preferredUniversities": { "type": "array", "items": { "type": "string" } },
+                  "jobType": { "type": "string", "enum": ["full_time", "part_time", "contract", "internship", "remote"] },
+                  "status": { "type": "string", "enum": ["draft", "active", "paused", "closed", "expired"] },
+                  "publishedAt": { "type": "string", "format": "date-time" },
+                  "expiresAt": { "type": "string", "format": "date-time" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Updated job listing" },
+          "400": { "description": "Validation error" },
+          "401": { "description": "Unauthorized" },
+          "403": { "description": "Hirer account required" },
+          "404": { "description": "Job not found" },
+          "500": { "description": "Server error" }
+        }
+      },
+      "delete": {
+        "summary": "Delete a job",
+        "description": "Delete a job listing owned by the authenticated hirer.",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": { "description": "Job deleted successfully" },
+          "401": { "description": "Unauthorized" },
+          "403": { "description": "Hirer account required" },
+          "404": { "description": "Job not found" },
+          "500": { "description": "Server error" }
+        }
+      }
+    },
+    "/api/jobs/closest": {
+      "get": {
+        "summary": "Get closest jobs",
+        "description": "Return jobs ordered by similarity to the authenticated seeker's profile. Uses local heuristics and optionally Gemini AI to compute a similarity percentage.",
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "List of jobs with similarity scores",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean" },
+                    "data": { "type": "array", "items": { "type": "object", "properties": {
+                      "similarity": { "type": "number", "description": "Percentage 0-100" },
+                      "title": { "type": "string" },
+                      "description": { "type": "string" },
+                      "requiredSkills": { "type": "array", "items": { "type": "string" } },
+                      "company": { "type": "string" },
+                      "jobId": { "type": "string" }
+                    } } }
+                  }
+                }
+              }
+            }
+          },
+          "401": { "description": "Unauthorized" },
+          "403": { "description": "Seeker account required" },
+          "500": { "description": "Server error" }
+        }
+      }
+    },
+    "/api/jobs/{id}/candidates": {
+      "get": {
+        "summary": "Get candidate matches for a job",
+        "description": "Return candidates ordered by similarity to the specified job. Uses local heuristics and optionally Gemini AI to compute a similarity percentage.",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of candidates with similarity scores",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean" },
+                    "data": { "type": "array", "items": { "type": "object", "properties": {
+                      "similarity": { "type": "number", "description": "Percentage 0-100" },
+                      "candidateName": { "type": "string" },
+                      "role": { "type": "string" },
+                      "location": { "type": "string" },
+                      "description": { "type": "string" },
+                      "skills": { "type": "array", "items": { "type": "string" } },
+                      "profileId": { "type": "string" }
+                    } } }
+                  }
+                }
+              }
+            }
+          },
+          "400": { "description": "Validation error" },
+          "401": { "description": "Unauthorized" },
+          "403": { "description": "Hirer account required" },
+          "404": { "description": "Job not found" },
+          "500": { "description": "Server error" }
+        }
+      }
+    },
+    "/api/swipe/job": {
+      "post": {
+        "summary": "Seeker swipe on a job",
+        "description": "Authenticated seekers may swipe on a job (heart or reject). Creates/updates a swipe record and creates a Match if the hirer previously hearted the seeker for that hirer.",
+        "security": [{ "bearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "jobId": { "type": "string" },
+                  "type": { "type": "string", "description": "'heart' or 'reject' (also accepts 'right'/'left')" }
+                },
+                "required": ["jobId", "type"],
+                "example": { "jobId": "648a...", "type": "heart" }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Swipe recorded (and match created if mutual heart)",
+            "content": { "application/json": { "schema": { "type": "object" } } }
+          },
+          "400": { "description": "Validation error" },
+          "401": { "description": "Unauthorized" },
+          "403": { "description": "Seeker account required" },
+          "404": { "description": "Job or profile not found" },
+          "500": { "description": "Server error" }
+        }
+      }
+    },
+    "/api/swipe/candidate": {
+      "post": {
+        "summary": "Hirer swipe on a candidate",
+        "description": "Authenticated hirers may swipe on a candidate for a given job (heart or reject). Creates/updates a swipe record and creates a Match if the seeker previously hearted the job.",
+        "security": [{ "bearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "userId": { "type": "string", "description": "Seeker user id" },
+                  "jobId": { "type": "string" },
+                  "type": { "type": "string", "description": "'heart' or 'reject'" }
+                },
+                "required": ["userId", "jobId", "type"],
+                "example": { "userId": "623b...", "jobId": "648a...", "type": "heart" }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Swipe recorded (and match created if mutual heart)",
+            "content": { "application/json": { "schema": { "type": "object" } } }
+          },
+          "400": { "description": "Validation error" },
+          "401": { "description": "Unauthorized" },
+          "403": { "description": "Hirer account required" },
+          "404": { "description": "Seeker profile or job not found" },
+          "500": { "description": "Server error" }
+        }
+      }
+    },
+    "/api/interview/generate": {
+      "post": {
+        "summary": "Generate practice interview questions",
+        "description": "Generate top 10 interview questions tailored to the user's role, experience and job description. Protected for seeker users.",
+        "security": [{ "bearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "role": { "type": "string" },
+                  "roleDescription": { "type": "string" },
+                  "experience": { "type": "string" },
+                  "skills": { "type": "array", "items": { "type": "string" } },
+                  "level": { "type": "string" }
+                },
+                "example": { "role": "Senior Backend Engineer", "roleDescription": "APIs and microservices", "experience": "5 years", "skills": ["Node.js","MongoDB"], "level": "senior" }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Returns generated questions", "content": { "application/json": { "schema": { "type": "object" } } } },
+          "400": { "description": "Validation error" },
+          "401": { "description": "Unauthorized" },
+          "403": { "description": "Seeker account required" },
+          "500": { "description": "Server error" }
+        }
+      }
+    },
+    "/api/interview/evaluate": {
+      "post": {
+        "summary": "Evaluate answered interview questions",
+        "description": "Send question/answer pairs and job description to AI to evaluate and store AI readiness score in the seeker's profile.",
+        "security": [{ "bearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "jobDescription": { "type": "string" },
+                  "qna": { "type": "array", "items": { "type": "object", "properties": { "question": { "type": "string" }, "answer": { "type": "string" } } } }
+                },
+                "example": { "jobDescription": "Build scalable APIs", "qna": [{ "question": "Explain event loop", "answer": "..." }] }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "AI evaluation stored and returned", "content": { "application/json": { "schema": { "type": "object" } } } },
+          "400": { "description": "Validation error" },
+          "401": { "description": "Unauthorized" },
+          "403": { "description": "Seeker account required" },
+          "500": { "description": "Server error" }
+        }
+      }
+    },
     "/api/me/profile": {
+      "get": {
+        "summary": "Get seeker profile",
+        "description": "Return the authenticated seeker's profile details, profile strength, AI readiness, jobs swiped, and top matching jobs.",
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Seeker profile and recommendations returned",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "401": { "description": "Unauthorized" },
+          "403": { "description": "Seeker account required" },
+          "404": { "description": "Seeker profile not found" },
+          "500": { "description": "Server error" }
+        }
+      },
       "put": {
         "summary": "Update seeker personal info",
-        "description": "Protected route. Update firstName, lastName, title, bio, location, githubUrl, linkedinUrl, portfolioUrl and add skills (no duplicates).",
+        "description": "Protected route. Update firstName, lastName, title, bio, location, githubUrl, linkedinUrl, portfolioUrl and add skills (no duplicates). If profile strength already exists, recompute it via AI and save the updated value.",
         "security": [{ "bearerAuth": [] }],
         "requestBody": {
           "required": true,
@@ -170,6 +680,17 @@
           "200": { "description": "Updated SeekerProfile returned" },
           "400": { "description": "Validation error" },
           "401": { "description": "Unauthorized" },
+          "500": { "description": "Server error" }
+        }
+      },
+      "delete": {
+        "summary": "Delete seeker profile and resume data",
+        "description": "Remove the authenticated seeker's profile, resume parse artifacts, and related experience/education/skill records.",
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": { "description": "Profile deleted successfully" },
+          "401": { "description": "Unauthorized" },
+          "404": { "description": "Seeker profile not found" },
           "500": { "description": "Server error" }
         }
       }

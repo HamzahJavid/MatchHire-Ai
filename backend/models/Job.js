@@ -30,7 +30,7 @@ const jobSchema = new mongoose.Schema(
     jobType: {
       type: String,
       enum: ["full_time", "part_time", "contract", "internship", "remote"],
-      required: true,
+      default: "full_time",
     },
 
     // ── Compensation ──────────────────────────────────────────────────────────
@@ -49,11 +49,7 @@ const jobSchema = new mongoose.Schema(
     // ── Requirements ──────────────────────────────────────────────────────────
     minExperienceYears: { type: Number, required: true, default: 0 },
 
-    educationRequirement: {
-      type: String,
-      enum: ["none", "high_school", "diploma", "bachelors", "masters", "phd"],
-      default: "none",
-    },
+    educationRequirement: { type: String, default: "Not specified" },
 
     preferredUniversities: [{ type: String }], // e.g. ["LUMS", "NUST", "IBA"]
 
@@ -66,6 +62,8 @@ const jobSchema = new mongoose.Schema(
     ],
 
     preferredSkills: [{ type: String }], // nice-to-have
+
+    postedAt: { type: Date, default: Date.now },
 
     // ── PDF source (hirer uploads a JD PDF to auto-fill form) ─────────────────
     sourcePdf: {

@@ -9,6 +9,9 @@ const mongoose = require("mongoose");
 require("dotenv").config();
 const authRoutes = require("./routes/authRoutes");
 const profileRoutes = require("./routes/profileRoutes");
+const jobRoutes = require("./routes/jobRoutes");
+const swipeRoutes = require("./routes/swipeRoutes");
+const interviewRoutes = require("./routes/interviewRoutes");
 
 const app = express();
 const PORT = process.env.PORT || 4000;
@@ -28,6 +31,9 @@ app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerDocument));
 app.use("/api/resume", resumeRoutes);
 app.use("/api/auth", authRoutes);
 app.use("/api/me", profileRoutes);
+app.use("/api/jobs", jobRoutes);
+app.use("/api/swipe", swipeRoutes);
+app.use("/api/interview", interviewRoutes);
 app.get("/health", (_req, res) => res.json({ status: "ok" }));
 
 app.use((err, _req, res, _next) => {

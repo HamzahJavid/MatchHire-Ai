@@ -2,19 +2,16 @@ const mongoose = require("mongoose");
 
 const interviewSchema = new mongoose.Schema(
     {
-        // Reference to the job (if this is a real interview)
         job: {
             type: mongoose.Schema.Types.ObjectId,
             ref: "Job",
         },
 
-        // Reference to the match (if interview is tied to a specific match)
         match: {
             type: mongoose.Schema.Types.ObjectId,
             ref: "Match",
         },
 
-        // Reference to the seeker taking the interview
         seeker: {
             type: mongoose.Schema.Types.ObjectId,
             ref: "User",
@@ -27,32 +24,29 @@ const interviewSchema = new mongoose.Schema(
             required: true,
         },
 
-        // Interview type
+
         type: {
             type: String,
             enum: ["practice", "real"],
             default: "practice",
         },
 
-        // Interview stage/category
         stage: {
             type: String,
             enum: ["screening", "technical", "behavioral", "cultural_fit", "practice"],
             default: "practice",
         },
 
-        // Role being interviewed for
+
         role: { type: String },
         roleDescription: { type: String },
 
-        // Context about the candidate at time of interview
         candidateContext: {
             experience: { type: String },
             skills: [{ type: String }],
             level: { type: String }, // junior, mid, senior, etc.
         },
 
-        // Questions generated for the interview
         questions: [
             {
                 questionId: { type: String }, // unique id for tracking
@@ -61,7 +55,7 @@ const interviewSchema = new mongoose.Schema(
             },
         ],
 
-        // Question-Answer pairs collected during interview
+
         responses: [
             {
                 questionId: { type: String },
@@ -73,7 +67,7 @@ const interviewSchema = new mongoose.Schema(
             },
         ],
 
-        // AI Evaluation Results
+
         evaluation: {
             score: { type: Number, min: 0, max: 100 }, // overall score
             assessedAt: { type: Date },

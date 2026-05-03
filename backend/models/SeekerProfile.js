@@ -1,10 +1,6 @@
 const mongoose = require("mongoose");
 
-// Using separate collections for experience, education and skills.
-// These will be referenced by ObjectId in the seeker profile.
 
-// ── AI Readiness ───────────────────────────────────────────────────────────────
-// Tag derived from CV parse quality + skills coverage
 const aiReadinessSchema = new mongoose.Schema(
   {
     tag: {
@@ -23,7 +19,7 @@ const aiReadinessSchema = new mongoose.Schema(
   { _id: false },
 );
 
-// ── Main Schema ────────────────────────────────────────────────────────────────
+
 const seekerProfileSchema = new mongoose.Schema(
   {
     user: {
@@ -35,7 +31,7 @@ const seekerProfileSchema = new mongoose.Schema(
 
     // CV document
     cv: {
-      fileUrl: { type: String }, // stored path / cloud URL
+      fileUrl: { type: String },
       fileName: { type: String },
       uploadedAt: { type: Date },
       parseStatus: {
@@ -46,8 +42,8 @@ const seekerProfileSchema = new mongoose.Schema(
       parsedAt: { type: Date },
     },
 
-    // Core profile (can be CV-parsed or manually filled)
-    headline: { type: String, trim: true }, // e.g. "Senior React Developer"
+
+    headline: { type: String, trim: true },
     summary: { type: String },
     location: { type: String },
     portfolioUrl: { type: String },
@@ -58,30 +54,24 @@ const seekerProfileSchema = new mongoose.Schema(
     experience: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Experience' }],
     education: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Education' }],
 
-    // Computed fields
+
     totalYearsOfExperience: { type: Number, default: 0 },
     highestEducationLevel: {
       type: String,
       enum: ["high_school", "diploma", "bachelors", "masters", "phd", "other"],
     },
 
-    // Profile strength (0-100), computed server-side
     profileStrength: { type: Number, min: 0, max: 100, default: null },
-
-    // AI readiness
     aiReadiness: { type: aiReadinessSchema, default: () => ({}) },
-
-    // Swipe & match counters (denormalised for fast dashboard reads)
     stats: {
       totalSwipes: { type: Number, default: 0 },
-      rightSwipes: { type: Number, default: 0 }, // seeker liked a job
+      rightSwipes: { type: Number, default: 0 },
       leftSwipes: { type: Number, default: 0 },
       totalMatches: { type: Number, default: 0 },
     },
-    // list of job ids the seeker has swiped on (denormalised)
+
     jobsSwiped: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Job' }],
 
-    // Job preferences
     preferences: {
       jobTypes: [
         {

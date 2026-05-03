@@ -17,7 +17,7 @@ export default function JobCard({ data, cardIndex, totalCards }) {
       </div>
 
       <div className="card-location">
-        <span className="location-icon">📍</span>
+        <span className="location-icon"></span>
         <span>{data.location}</span>
       </div>
 

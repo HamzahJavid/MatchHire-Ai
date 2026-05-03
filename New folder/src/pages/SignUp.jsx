@@ -2,15 +2,38 @@ import React, { useState } from "react";
 import "./SignUp.css";
 import Logo from "../assets/logo.svg";
 import { useNavigate, Link } from "react-router-dom";
+import { authAPI, tokenAPI } from "../services/api";
 
 export default function SignUp({ onLogin }) {
   const [role, setRole] = useState("seeker");
+  const [fullName, setFullName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
   const navigate = useNavigate();
 
-  function handleCreate(e) {
+  async function handleCreate(e) {
     e.preventDefault();
-    onLogin(role);
-    navigate(`/dashboard/${role}`);
+    setLoading(true);
+    setError("");
+
+    try {
+      const response = await authAPI.signup(fullName, email, password, role);
+      
+      // Store tokens
+      tokenAPI.setTokens(response.data.accessToken, response.data.refreshToken);
+      
+      // Determine role from user object
+      const userRole = response.data.user.hasSeeker ? "seeker" : "recruiter";
+      onLogin(userRole);
+      
+      navigate(`/dashboard/${userRole}`);
+    } catch (err) {
+      setError(err.message || "Sign up failed. Please try again.");
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
@@ -39,26 +62,48 @@ export default function SignUp({ onLogin }) {
           </button>
         </div>
         <form className="signup-form" onSubmit={handleCreate}>
+          {error && <div style={{ color: "red", marginBottom: "1rem" }}>{error}</div>}
           <label className="field">
             <span className="input-icon" aria-hidden="true">
               👤
             </span>
-            <input type="text" placeholder="Full name" required />
+            <input
+              type="text"
+              placeholder="Full name"
+              value={fullName}
+              onChange={(e) => setFullName(e.target.value)}
+              required
+              disabled={loading}
+            />
           </label>
           <label className="field">
             <span className="input-icon" aria-hidden="true">
               ✉️
             </span>
-            <input type="email" placeholder="Email address" required />
+            <input
+              type="email"
+              placeholder="Email address"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+              disabled={loading}
+            />
           </label>
           <label className="field">
             <span className="input-icon" aria-hidden="true">
               🔒
             </span>
-            <input type="password" placeholder="Password" required />
+            <input
+              type="password"
+              placeholder="Password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+              disabled={loading}
+            />
           </label>
-          <button className="btn-primary" type="submit">
-            Create Account <span className="arrow">→</span>
+          <button className="btn-primary" type="submit" disabled={loading}>
+            {loading ? "Creating Account..." : "Create Account"} <span className="arrow">→</span>
           </button>
         </form>
         <p className="signup">

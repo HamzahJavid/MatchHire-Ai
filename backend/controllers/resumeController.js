@@ -182,7 +182,6 @@ const parseResumeController = async (req, res) => {
     profile.education = createdEducation.map((ed) => ed._id);
     profile.aiReadiness = profile.aiReadiness || {};
 
-    updated = await profile.save();
 
     // log what was saved for verification
     console.log('[PARSE RESULT] Skills saved:', createdSkills.length, createdSkills.map(s => ({ id: s._id, name: s.name })));
@@ -194,11 +193,16 @@ const parseResumeController = async (req, res) => {
       education: profile.education.length,
     });
 
-    fs.unlink(filePath, () => {});
-
+    fs.unlink(filePath, () => { });
+    updated = await profile.save();
+    await updated.populate(['skills', 'experience', 'education']);
     return res.json({ success: true, data: updated });
+
+
+
+
   } catch (err) {
-    fs.unlink(filePath, () => {});
+    fs.unlink(filePath, () => { });
     console.error("[resumeController]", err.message);
     return res.status(500).json({ success: false, error: err.message });
   }
@@ -258,7 +262,8 @@ const patchResumeController = async (req, res) => {
       profile.education = await normalizeArrayItems(education, normalizeEducationItem, profile._id, Education);
     }
 
-    const updated = await profile.save();
+    updated = await profile.save();
+    await updated.populate(['skills', 'experience', 'education']);
 
     if (profile.profileStrength != null) {
       const profileController = require('./profileController');

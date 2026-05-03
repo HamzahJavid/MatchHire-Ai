@@ -1,83 +1,125 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import JobCard from "../components/JobCard";
 import "../styles/SwipePage.css";
-
-const mockCandidates = [
-  {
-    id: 1,
-    title: "Sarah Chen",
-    subtitle: "Senior React Developer · 5 yrs",
-    location: "San Francisco",
-    matchScore: 94,
-    skills: ["React", "TypeScript", "GraphQL"],
-    description:
-      "Passionate frontend engineer with experience at startups and enterprise.",
-  },
-  {
-    id: 2,
-    title: "James Park",
-    subtitle: "Full Stack Engineer · 4 yrs",
-    location: "Remote",
-    matchScore: 89,
-    skills: ["React", "Node.js", "PostgreSQL"],
-    description:
-      "Product-minded engineer who loves building user-facing features.",
-  },
-  {
-    id: 3,
-    title: "Maya Johnson",
-    subtitle: "Frontend Developer · 3 yrs",
-    location: "New York",
-    matchScore: 82,
-    skills: ["React", "Tailwind", "Next.js"],
-    description: "Creative developer with a background in design and UX.",
-  },
-];
-
-const mockJobs = [
-  {
-    id: 1,
-    title: "Senior React Developer",
-    subtitle: "TechFlow Inc.",
-    location: "Remote",
-    matchScore: 94,
-    skills: ["React", "TypeScript", "AWS"],
-    description:
-      "Build next-gen trading platform. Competitive salary + equity.",
-  },
-  {
-    id: 2,
-    title: "Frontend Engineer",
-    subtitle: "DataPulse",
-    location: "New York",
-    matchScore: 89,
-    skills: ["React", "GraphQL", "Testing"],
-    description: "Join our analytics team building beautiful dashboards.",
-  },
-  {
-    id: 3,
-    title: "Full Stack Developer",
-    subtitle: "Horizon Labs",
-    location: "London",
-    matchScore: 82,
-    skills: ["React", "Node.js", "MongoDB"],
-    description:
-      "Early stage startup looking for a versatile founding engineer.",
-  },
-];
+import { jobsAPI, swipeAPI } from "../services/api";
 
 export default function SwipePage({ role = "seeker" }) {
-  const cards = role === "recruiter" ? mockCandidates : mockJobs;
+  const [cards, setCards] = useState([]);
   const [currentIndex, setCurrentIndex] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [hirerJobs, setHirerJobs] = useState([]);
+  const [selectedJobId, setSelectedJobId] = useState(null);
+  const [jobLoading, setJobLoading] = useState(false);
 
-  function handleSwipe(direction) {
-    if (currentIndex < cards.length) {
+  useEffect(() => {
+    setCurrentIndex(0);
+    setError("");
+    if (role === "recruiter") {
+      loadHirerJobs();
+    } else {
+      loadJobCards();
+    }
+  }, [role]);
+
+  useEffect(() => {
+    if (role === "recruiter" && selectedJobId) {
+      loadCandidateCards(selectedJobId);
+    }
+  }, [role, selectedJobId]);
+
+  async function loadJobCards() {
+    setLoading(true);
+    setError("");
+    try {
+      const response = await jobsAPI.getClosestJobs();
+      const items = response.data || [];
+      const mapped = items.map((job) => ({
+        id: job.jobId,
+        title: job.title,
+        subtitle: job.company || "",
+        location: job.location || "",
+        matchScore: job.similarity || 0,
+        description: job.description || "",
+        skills: job.requiredSkills || [],
+        jobId: job.jobId,
+      }));
+      setCards(mapped);
+    } catch (err) {
+      setError(err.message || "Failed to load jobs.");
+    } finally {
+      setLoading(false);
+      setCurrentIndex(0);
+    }
+  }
+
+  async function loadHirerJobs() {
+    setJobLoading(true);
+    setError("");
+    try {
+      const response = await jobsAPI.getMyJobs();
+      const items = response.data || [];
+      setHirerJobs(items);
+      if (items.length > 0) {
+        setSelectedJobId(items[0]._id);
+      } else {
+        setSelectedJobId(null);
+        setCards([]);
+      }
+    } catch (err) {
+      setError(err.message || "Failed to load your jobs.");
+    } finally {
+      setJobLoading(false);
+    }
+  }
+
+  async function loadCandidateCards(jobId) {
+    setLoading(true);
+    setError("");
+    try {
+      const response = await jobsAPI.getCandidates(jobId);
+      const items = response.data || [];
+      const mapped = items.map((candidate, index) => ({
+        id: candidate.profileId || index,
+        title: candidate.candidateName || "Candidate",
+        subtitle: candidate.role || "",
+        location: candidate.location || "",
+        matchScore: candidate.similarity || 0,
+        description: candidate.description || "",
+        skills: candidate.skills || [],
+        profileId: candidate.profileId,
+        jobId,
+      }));
+      setCards(mapped);
+    } catch (err) {
+      setError(err.message || "Failed to load candidates.");
+    } finally {
+      setLoading(false);
+      setCurrentIndex(0);
+    }
+  }
+
+  async function handleSwipe(type) {
+    const currentCard = cards[currentIndex];
+    if (!currentCard) return;
+    setError("");
+
+    try {
+      if (role === "seeker") {
+        await swipeAPI.swipeJob(currentCard.jobId, type);
+      } else {
+        if (!selectedJobId) throw new Error("No job selected for candidate matching.");
+        await swipeAPI.swipeCandidate(currentCard.profileId, selectedJobId, type);
+      }
       setCurrentIndex((prev) => prev + 1);
+    } catch (err) {
+      setError(err.message || "Swipe action failed.");
     }
   }
 
   const currentCard = cards[currentIndex];
+  const noCards = !loading && cards.length === 0;
 
   return (
     <div className="swipe-page-container">
@@ -85,14 +127,48 @@ export default function SwipePage({ role = "seeker" }) {
         <h1>{role === "recruiter" ? "Swipe Candidates" : "Swipe Jobs"}</h1>
         <p>
           {role === "recruiter"
-            ? "Find your perfect candidate"
-            : "Find your dream job"}
+            ? "Swipe candidate profiles for your jobs"
+            : "Swipe through jobs tailored to your profile"}
         </p>
       </div>
 
+      {role === "recruiter" && (
+        <div className="job-selector">
+          <label htmlFor="job-select">Select a job:</label>
+          <select
+            id="job-select"
+            value={selectedJobId || ""}
+            onChange={(e) => setSelectedJobId(e.target.value)}
+            disabled={jobLoading}
+          >
+            {hirerJobs.length === 0 ? (
+              <option value="">No active jobs found</option>
+            ) : (
+              hirerJobs.map((job) => (
+                <option key={job._id} value={job._id}>
+                  {job.title} — {job.company}
+                </option>
+              ))
+            )}
+          </select>
+        </div>
+      )}
+
+      {error && (
+        <div className="swipe-error">{error}</div>
+      )}
+
       <div className="swipe-card-wrapper">
         <AnimatePresence mode="wait">
-          {currentCard ? (
+          {loading ? (
+            <motion.div
+              className="loading-card"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+            >
+              Loading cards...
+            </motion.div>
+          ) : currentCard ? (
             <motion.div
               key={currentCard.id}
               initial={{ scale: 0.9, opacity: 0, y: 20 }}
@@ -101,21 +177,21 @@ export default function SwipePage({ role = "seeker" }) {
               transition={{ type: "spring", stiffness: 300, damping: 25 }}
               className="motion-wrapper"
             >
-              <JobCard 
-                data={currentCard} 
-                cardIndex={currentIndex + 1} 
-                totalCards={cards.length} 
+              <JobCard
+                data={currentCard}
+                cardIndex={currentIndex + 1}
+                totalCards={cards.length}
               />
             </motion.div>
           ) : (
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               className="no-more-cards"
             >
               <h3>No more {role === "recruiter" ? "candidates" : "jobs"}!</h3>
               <p>Check back later or update your profile.</p>
-              <button 
+              <button
                 className="reset-btn"
                 onClick={() => setCurrentIndex(0)}
               >
@@ -128,15 +204,15 @@ export default function SwipePage({ role = "seeker" }) {
 
       {currentCard && (
         <div className="swipe-actions">
-          <button 
-            className="swipe-btn reject" 
+          <button
+            className="swipe-btn reject"
             onClick={() => handleSwipe("left")}
             aria-label="Reject"
           >
             <span className="icon">✕</span>
           </button>
-          <button 
-            className="swipe-btn accept" 
+          <button
+            className="swipe-btn accept"
             onClick={() => handleSwipe("right")}
             aria-label="Accept"
           >

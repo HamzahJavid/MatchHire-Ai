@@ -2,19 +2,19 @@ import React from "react";
 import "./Sidebar.css";
 
 const seekerLinks = [
-  { key: "dashboard", label: "Dashboard", icon: "▦" },
-  { key: "profile", label: "My Profile", icon: "👤" },
-  { key: "swipe", label: "Swipe Jobs", icon: "🔁" },
-  { key: "matches", label: "Matches", icon: "💬" },
-  { key: "practice", label: "AI Practice", icon: "🧠" },
+  { key: "dashboard", label: "Dashboard", icon: "" },
+  { key: "profile", label: "My Profile", icon: "" },
+  { key: "swipe", label: "Swipe Jobs", icon: "" },
+  { key: "matches", label: "Matches", icon: "" },
+  { key: "practice", label: "AI Practice", icon: "" },
 ];
 
 const recruiterLinks = [
-  { key: "dashboard", label: "Dashboard", icon: "▦" },
-  { key: "post-job", label: "Post Job", icon: "📋" },
-  { key: "swipe", label: "Swipe Candidates", icon: "🔁" },
-  { key: "matches", label: "Matches", icon: "💬" },
-  { key: "interviews", label: "AI Interviews", icon: "🧠" },
+  { key: "dashboard", label: "Dashboard", icon: "" },
+  { key: "post-job", label: "Post Job", icon: "" },
+  { key: "swipe", label: "Swipe Candidates", icon: "" },
+  { key: "matches", label: "Matches", icon: "" },
+  { key: "interviews", label: "AI Interviews", icon: "" },
 ];
 
 export default function Sidebar({
@@ -70,11 +70,11 @@ export default function Sidebar({
             className="sb-bottom-link"
             onClick={() => onNavigate && onNavigate("settings")}
           >
-            <span className="sb-ico">⚙️</span>
+            <span className="sb-ico"></span>
             <span className="sb-label">Settings</span>
           </button>
           <button className="sb-bottom-link" onClick={onSignOut}>
-            <span className="sb-ico">↩️</span>
+            <span className="sb-ico">↩</span>
             <span className="sb-label">Sign Out</span>
           </button>
         </div>

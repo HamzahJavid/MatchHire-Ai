@@ -404,11 +404,9 @@ function parseResumeLocal(text) {
   const sections = splitSections(lines);
   const contact = extractContact(text);
   const name = extractName(lines);
-  const nameParts = name ? name.split(/\s+/) : [];
 
   return {
-    firstName: nameParts[0] || null,
-    lastName: nameParts.slice(1).join(" ") || null,
+    fullName: name || null,
     title: extractTitle(sections),
     bio: sections.summary?.trim() || null,
     location: extractLocation(lines),
@@ -435,7 +433,7 @@ async function parseResumeWithAI(text) {
 
   console.log('[AI PARSER] Initializing Google Generative AI with API key...');
   const genAI = new GoogleGenerativeAI(API_KEY);
-  
+
   // List candidate models and pick the first one that works
   let model;
   const modelsToTry = ['gemini-2.5-flash', 'gemini-2.5-flash-lite', 'gemini-2.0-flash'];
@@ -445,7 +443,7 @@ async function parseResumeWithAI(text) {
     try {
       console.log(`[AI PARSER] Attempting model: ${modelName}`);
       model = genAI.getGenerativeModel({ model: modelName });
-      
+
       const prompt = `You are an expert resume parser. Extract ALL information from the provided resume and return ONLY a valid JSON object. No markdown, no explanation, just pure JSON.
 
 EXTRACT EVERYTHING YOU CAN FIND:
@@ -457,8 +455,7 @@ EXTRACT EVERYTHING YOU CAN FIND:
 
 Return ONLY this JSON structure (no markdown, no code blocks):
 {
-  "firstName": "extracted or null",
-  "lastName": "extracted or null",
+  "fullName": "full name extracted or null",
   "title": "job title or headline or null",
   "bio": "summary/objective or null",
   "location": "city, state or null",
@@ -493,7 +490,7 @@ ${text}`;
       const result = await model.generateContent(prompt);
       const response = result.response;
       const rawText = response.text();
-      
+
       console.log('[AI PARSER RAW RESPONSE]:', rawText);
 
       // Extract JSON from the response
@@ -505,7 +502,7 @@ ${text}`;
       console.log('[AI PARSER] Extracted JSON match');
       const parsed = JSON.parse(jsonMatch[0]);
       parsed._ai_raw = rawText;
-      
+
       console.log(`[AI PARSER] Successfully parsed AI response with model: ${modelName}`);
       return parsed;
 

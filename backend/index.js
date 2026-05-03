@@ -12,6 +12,7 @@ const profileRoutes = require("./routes/profileRoutes");
 const jobRoutes = require("./routes/jobRoutes");
 const swipeRoutes = require("./routes/swipeRoutes");
 const interviewRoutes = require("./routes/interviewRoutes");
+const messageRoutes = require("./routes/messageRoutes");
 
 const app = express();
 const PORT = process.env.PORT || 4000;
@@ -21,7 +22,8 @@ if (!fs.existsSync("uploads")) fs.mkdirSync("uploads");
 app.use(helmet());
 app.use(
   cors({
-    origin: "http://localhost:5173", // your Vite dev port
+    origin: "http://localhost:5174", // your Vite dev port
+    credentials: true
   }),
 );
 app.use(express.json());
@@ -34,6 +36,7 @@ app.use("/api/me", profileRoutes);
 app.use("/api/jobs", jobRoutes);
 app.use("/api/swipe", swipeRoutes);
 app.use("/api/interview", interviewRoutes);
+app.use("/api/messages", messageRoutes);
 app.get("/health", (_req, res) => res.json({ status: "ok" }));
 
 app.use((err, _req, res, _next) => {

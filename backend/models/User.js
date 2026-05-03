@@ -16,8 +16,7 @@ const userSchema = new mongoose.Schema(
       minlength: 8,
       select: false,
     },
-    firstName: { type: String, required: true, trim: true },
-    lastName: { type: String, required: true, trim: true },
+    fullName: { type: String, required: true, trim: true },
     phone: { type: String, trim: true },
     avatarUrl: { type: String },
 

@@ -2,15 +2,37 @@ import React, { useState } from "react";
 import "./Login.css";
 import Logo from "../assets/logo.svg";
 import { useNavigate, Link } from "react-router-dom";
+import { authAPI, tokenAPI } from "../services/api";
 
 export default function Login({ onLogin }) {
   const [role, setRole] = useState("seeker");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
   const navigate = useNavigate();
 
-  function handleSignIn(e) {
+  async function handleSignIn(e) {
     e.preventDefault();
-    onLogin(role);
-    navigate(`/dashboard/${role}`);
+    setLoading(true);
+    setError("");
+
+    try {
+      const response = await authAPI.signin(email, password);
+      
+      // Store tokens
+      tokenAPI.setTokens(response.data.accessToken, response.data.refreshToken);
+      
+      // Determine role from user object
+      const userRole = response.data.user.hasSeeker ? "seeker" : "recruiter";
+      onLogin(userRole);
+      
+      navigate(`/dashboard/${userRole}`);
+    } catch (err) {
+      setError(err.message || "Sign in failed. Please try again.");
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
@@ -42,6 +64,7 @@ export default function Login({ onLogin }) {
         </div>
 
         <form className="login-form" onSubmit={handleSignIn}>
+          {error && <div style={{ color: "red", marginBottom: "1rem" }}>{error}</div>}
           <label className="field">
             <span className="input-icon" aria-hidden="true">
               <svg width="18" height="12" viewBox="0 0 24 24" fill="none">
@@ -54,7 +77,14 @@ export default function Login({ onLogin }) {
                 />
               </svg>
             </span>
-            <input type="email" placeholder="Email address" required />
+            <input
+              type="email"
+              placeholder="Email address"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+              disabled={loading}
+            />
           </label>
           <label className="field">
             <span className="input-icon" aria-hidden="true">
@@ -79,10 +109,17 @@ export default function Login({ onLogin }) {
                 />
               </svg>
             </span>
-            <input type="password" placeholder="Password" required />
+            <input
+              type="password"
+              placeholder="Password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+              disabled={loading}
+            />
           </label>
-          <button className="btn-primary" type="submit">
-            Sign In <span className="arrow">→</span>
+          <button className="btn-primary" type="submit" disabled={loading}>
+            {loading ? "Signing In..." : "Sign In"} <span className="arrow">→</span>
           </button>
         </form>
         <p className="signup">

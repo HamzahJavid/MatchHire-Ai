@@ -37,19 +37,19 @@ export default function MatchCard({ data, role = "seeker" }) {
       </div>
 
       <div className="match-actions">
-        <button className="btn">💬 Message</button>
+        <button className="btn">Message</button>
 
         {role === "recruiter" ? (
           data.aiScore === null ? (
-            <button className="btn primary">🎥 Start AI Interview</button>
+            <button className="btn primary">Start AI Interview</button>
           ) : data.status.includes("Interview") && data.status !== "Matched" ? (
-            <button className="btn outline">📅 Schedule Final Round</button>
+            <button className="btn outline">Schedule Final Round</button>
           ) : null
         ) : (
           data.aiScore === null ? (
-            <button className="btn primary">🎥 Take AI Interview</button>
+            <button className="btn primary">Take AI Interview</button>
           ) : data.status.includes("Interview") && data.status !== "Matched" ? (
-            <button className="btn outline">📅 View Interview</button>
+            <button className="btn outline">View Interview</button>
           ) : null
         )}
       </div>

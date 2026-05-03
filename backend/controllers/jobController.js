@@ -432,12 +432,12 @@ exports.getCandidates = async (req, res) => {
     const scored = seekers
       .filter((profile) => !swipedSeekerIds.has(String(profile._id)))
       .map((profile) => {
-      const profileText = [profile.headline || '', profile.summary || '', (profile.skills || []).map(s => (s && s.name) || s || '').join(' ')].filter(Boolean).join('\n');
-      const t1 = tokenize(jobText);
-      const t2 = tokenize(profileText);
-      const localScore = Math.round(jaccard(t1, t2) * 100);
-      return { profile, localScore, profileText };
-    });
+        const profileText = [profile.headline || '', profile.summary || '', (profile.skills || []).map(s => (s && s.name) || s || '').join(' ')].filter(Boolean).join('\n');
+        const t1 = tokenize(jobText);
+        const t2 = tokenize(profileText);
+        const localScore = Math.round(jaccard(t1, t2) * 100);
+        return { profile, localScore, profileText };
+      });
 
     scored.sort((a, b) => b.localScore - a.localScore);
     const top = scored.slice(0, 30);
@@ -452,8 +452,8 @@ exports.getCandidates = async (req, res) => {
       let candidateName = null;
       try {
         const User = require('../models/User');
-        const user = await User.findById(item.profile.user).select('firstName lastName').lean();
-        if (user) candidateName = `${user.firstName || ''} ${user.lastName || ''}`.trim();
+        const user = await User.findById(item.profile.user).select('fullName').lean();
+        if (user) candidateName = user.fullName || null;
       } catch (e) {
         candidateName = null;
       }
@@ -473,6 +473,20 @@ exports.getCandidates = async (req, res) => {
     return res.json({ success: true, data: results });
   } catch (err) {
     console.error('[getCandidates]', err);
+    return res.status(500).json({ success: false, error: err.message });
+  }
+};
+
+exports.getMyJobs = async (req, res) => {
+  try {
+    const userId = req.user._id;
+    const hirerProfile = await HirerProfile.findOne({ user: userId });
+    if (!hirerProfile) return res.status(404).json({ success: false, error: 'Hirer profile not found' });
+
+    const jobs = await Job.find({ hirer: hirerProfile._id, status: 'active' }).lean();
+    return res.json({ success: true, data: jobs });
+  } catch (err) {
+    console.error('[getMyJobs]', err);
     return res.status(500).json({ success: false, error: err.message });
   }
 };

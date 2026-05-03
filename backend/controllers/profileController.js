@@ -166,8 +166,7 @@ exports.updatePersonal = async (req, res) => {
   try {
     const userId = req.user._id;
     const {
-      firstName,
-      lastName,
+      fullName,
       title, // maps to headline
       bio, // maps to summary
       location,
@@ -178,18 +177,15 @@ exports.updatePersonal = async (req, res) => {
     } = req.body;
 
     // Basic validations
-    if (firstName && String(firstName).trim().length < 1)
-      return res.status(400).json({ success: false, error: 'firstName too short' });
-    if (lastName && String(lastName).trim().length < 1)
-      return res.status(400).json({ success: false, error: 'lastName too short' });
+    if (fullName && String(fullName).trim().length < 2)
+      return res.status(400).json({ success: false, error: 'fullName too short' });
     if (title && String(title).trim().length < 2)
       return res.status(400).json({ success: false, error: 'title too short' });
 
-    // update User name fields if present
-    if (firstName || lastName) {
+    // update User name field if present
+    if (fullName) {
       const user = await User.findById(userId);
-      if (firstName) user.firstName = String(firstName).trim();
-      if (lastName) user.lastName = String(lastName).trim();
+      user.fullName = String(fullName).trim();
       await user.save();
     }
 
@@ -250,6 +246,7 @@ exports.updatePersonal = async (req, res) => {
     }
 
     await profile.save();
+    await profile.populate(['skills', 'experience', 'education']);
 
     if (profile.profileStrength != null) {
       await evaluateProfileStrength(profile, true).catch((e) => console.warn('[updatePersonal] profile strength update failed', e.message));

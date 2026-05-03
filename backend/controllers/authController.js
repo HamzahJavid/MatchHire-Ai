@@ -60,18 +60,13 @@ exports.signUp = async (req, res) => {
     if ((seeker && hirer) || (!seeker && !hirer))
       return res.status(400).json({ success: false, error: 'Must send exactly one of hasSeeker or hasHirer as true' });
 
-    const nameParts = fullName.trim().split(/\s+/);
-    const firstName = nameParts.shift();
-    const lastName = nameParts.join(' ') || '';
-
     const existing = await User.findOne({ email });
     if (existing) return res.status(409).json({ success: false, error: 'Email already registered' });
 
     const user = new User({
       email,
       password,
-      firstName,
-      lastName,
+      fullName,
       hasSeeker: seeker,
       hasHirer: hirer,
     });

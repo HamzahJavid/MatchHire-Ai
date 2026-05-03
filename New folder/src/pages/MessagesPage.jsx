@@ -109,7 +109,7 @@ export default function MessagesPage({ currentUserId = "seeker_1", currentUserNa
       >
         {/* Header */}
         <div className="messages-header">
-          <h1>💬 Messages</h1>
+          <h1> Messages</h1>
           <p>Stay connected with your matches</p>
         </div>
 

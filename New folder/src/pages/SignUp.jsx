@@ -49,7 +49,7 @@ export default function SignUp({ onLogin }) {
             className={`role-btn ${role === "recruiter" ? "active" : ""}`}
             onClick={() => setRole("recruiter")}
           >
-            <div className="role-ico">🎁</div>
+            <div className="role-ico"></div>
             <div>Hiring</div>
           </button>
           <button
@@ -57,7 +57,7 @@ export default function SignUp({ onLogin }) {
             className={`role-btn ${role === "seeker" ? "active" : ""}`}
             onClick={() => setRole("seeker")}
           >
-            <div className="role-ico">🧭</div>
+            <div className="role-ico"></div>
             <div>Seeking</div>
           </button>
         </div>
@@ -65,7 +65,6 @@ export default function SignUp({ onLogin }) {
           {error && <div style={{ color: "red", marginBottom: "1rem" }}>{error}</div>}
           <label className="field">
             <span className="input-icon" aria-hidden="true">
-              👤
             </span>
             <input
               type="text"
@@ -78,7 +77,7 @@ export default function SignUp({ onLogin }) {
           </label>
           <label className="field">
             <span className="input-icon" aria-hidden="true">
-              ✉️
+              
             </span>
             <input
               type="email"
@@ -91,7 +90,7 @@ export default function SignUp({ onLogin }) {
           </label>
           <label className="field">
             <span className="input-icon" aria-hidden="true">
-              🔒
+              
             </span>
             <input
               type="password"

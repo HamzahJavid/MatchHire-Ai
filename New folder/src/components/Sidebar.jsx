@@ -6,6 +6,7 @@ const seekerLinks = [
   { key: "profile", label: "My Profile", icon: "" },
   { key: "swipe", label: "Swipe Jobs", icon: "" },
   { key: "matches", label: "Matches", icon: "" },
+  { key: "messages", label: "Messages", icon: "" },
   { key: "practice", label: "AI Practice", icon: "" },
 ];
 
@@ -14,6 +15,7 @@ const recruiterLinks = [
   { key: "post-job", label: "Post Job", icon: "" },
   { key: "swipe", label: "Swipe Candidates", icon: "" },
   { key: "matches", label: "Matches", icon: "" },
+  { key: "messages", label: "Messages", icon: "" },
   { key: "interviews", label: "AI Interviews", icon: "" },
 ];
 

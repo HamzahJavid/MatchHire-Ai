@@ -9,6 +9,8 @@ import "./Dashboard.css";
 import SeekerProfile from "./SeekerProfile";
 import SwipePage from "./SwipePage";
 import MatchesPage from "./MatchesPage";
+import MessagesPage from "./MessagesPage";
+import ViewInterviewRoute from "./ViewInterviewRoute";
 import AIPractice from "./AIPractice";
 import PostJob from "./PostJob";
 import AIInterview from "./AIInterview";
@@ -20,7 +22,7 @@ const PlaceholderPage = ({ title }) => (
   </div>
 );
 
-export default function Dashboard({ role = "seeker", onLogout }) {
+export default function Dashboard({ role = "seeker", onLogout, currentUser }) {
   const navigate = useNavigate();
   const location = useLocation();
   const [menuOpen, setMenuOpen] = useState(true);
@@ -80,7 +82,7 @@ export default function Dashboard({ role = "seeker", onLogout }) {
               role === "recruiter" ? (
                 <RecruiterDashboard />
               ) : (
-                <SeekerDashboard />
+                <SeekerDashboard currentUser={currentUser} />
               )
             }
           />
@@ -88,8 +90,10 @@ export default function Dashboard({ role = "seeker", onLogout }) {
           {role === "seeker" && (
             <>
               <Route path="profile" element={<SeekerProfile />} />
-              <Route path="swipe" element={<SwipePage />} />
-              <Route path="matches" element={<MatchesPage />} />
+                <Route path="swipe" element={<SwipePage currentUser={currentUser} />} />
+                <Route path="matches" element={<MatchesPage role="seeker" currentUser={currentUser} />} />
+                <Route path="messages" element={<MessagesPage role="seeker" currentUser={currentUser} />} />
+                <Route path="interviews/:interviewId" element={<ViewInterviewRoute role="seeker" currentUser={currentUser} />} />
               <Route path="practice" element={<AIPractice />} />
               <Route
                 path="settings"
@@ -113,8 +117,16 @@ export default function Dashboard({ role = "seeker", onLogout }) {
                 element={<MatchesPage role="recruiter" />}
               />
               <Route
+                path="messages"
+                element={<MessagesPage role="hirer" currentUser={currentUser} />}
+              />
+              <Route
                 path="interviews"
                 element={<AIInterview />}
+              />
+              <Route
+                path="interviews/:interviewId"
+                element={<ViewInterviewRoute role="hirer" currentUser={currentUser} />}
               />
               <Route
                 path="settings"

@@ -1,9 +1,9 @@
 import React from "react";
 
-export default function PracticeCard({ title, description, stats, buttonText, onAction }) {
+export default function PracticeCard({ title, description, stats, buttonText, onAction, disabled = false }) {
   return (
     <section className="practice-card">
-      <div className="practice-icon">🧠</div>
+      <div className="practice-icon"></div>
       <h2>{title}</h2>
       <p>{description}</p>
 
@@ -16,7 +16,12 @@ export default function PracticeCard({ title, description, stats, buttonText, on
         ))}
       </div>
 
-      <button className="practice-action-btn" onClick={onAction}>
+      <button 
+        className="practice-action-btn" 
+        onClick={onAction}
+        disabled={disabled}
+        style={{ opacity: disabled ? 0.6 : 1, cursor: disabled ? 'not-allowed' : 'pointer' }}
+      >
         {buttonText}
       </button>
     </section>

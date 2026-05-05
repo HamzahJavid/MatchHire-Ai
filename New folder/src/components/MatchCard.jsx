@@ -1,7 +1,16 @@
 import { motion } from "framer-motion";
 
-export default function MatchCard({ data, role = "seeker" }) {
+export default function MatchCard({
+  data,
+  role = "seeker",
+  onMessage,
+  onViewInterview,
+  onTakeInterview,
+  onGenerateInterview,
+}) {
   const statusClass = getStatusClass(data.status);
+  const showInterview = Boolean(data.interviewId);
+  const isRecruiter = role === "recruiter";
 
   return (
     <motion.div
@@ -12,10 +21,11 @@ export default function MatchCard({ data, role = "seeker" }) {
     >
       <div className="match-top">
         <div className="match-info">
-          <div className="avatar">{data.name.charAt(0)}</div>
+          <div className="avatar">{(data.name || "M").charAt(0)}</div>
           <div>
             <h3>{data.name}</h3>
             <p>{data.role}</p>
+            {data.subtitle && <small>{data.subtitle}</small>}
           </div>
         </div>
 
@@ -25,9 +35,9 @@ export default function MatchCard({ data, role = "seeker" }) {
             <p>Match</p>
           </div>
 
-          {data.aiScore != null && (
+          {(data.aiScore != null || data.interview?.evaluation?.score != null) && (
             <div className="stat-block">
-              <span className="score ai">{data.aiScore}</span>
+            <span className="score ai">{data.aiScore ?? data.interview?.evaluation?.score}</span>
               <p>AI Score</p>
             </div>
           )}
@@ -37,20 +47,26 @@ export default function MatchCard({ data, role = "seeker" }) {
       </div>
 
       <div className="match-actions">
-        <button className="btn">Message</button>
+        <button className="btn" onClick={onMessage}>Message</button>
 
-        {role === "recruiter" ? (
-          data.aiScore === null ? (
-            <button className="btn primary">Start AI Interview</button>
-          ) : data.status.includes("Interview") && data.status !== "Matched" ? (
-            <button className="btn outline">Schedule Final Round</button>
-          ) : null
+        {isRecruiter ? (
+          showInterview ? (
+            <button className="btn outline" onClick={onViewInterview}>
+              View Interview
+            </button>
+          ) : (
+            <button className="btn primary" onClick={onGenerateInterview}>
+              Generate Interview
+            </button>
+          )
+        ) : showInterview ? (
+          <button className="btn outline" onClick={onViewInterview}>
+            View Interview
+          </button>
         ) : (
-          data.aiScore === null ? (
-            <button className="btn primary">Take AI Interview</button>
-          ) : data.status.includes("Interview") && data.status !== "Matched" ? (
-            <button className="btn outline">View Interview</button>
-          ) : null
+          <button className="btn primary" onClick={onTakeInterview}>
+            Take Interview
+          </button>
         )}
       </div>
     </motion.div>

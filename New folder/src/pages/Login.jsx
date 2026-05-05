@@ -25,7 +25,7 @@ export default function Login({ onLogin }) {
       
       // Determine role from user object
       const userRole = response.data.user.hasSeeker ? "seeker" : "recruiter";
-      onLogin(userRole);
+      onLogin(userRole, response.data.user);
       
       navigate(`/dashboard/${userRole}`);
     } catch (err) {
@@ -50,7 +50,7 @@ export default function Login({ onLogin }) {
             className={`role-btn ${role === "recruiter" ? "active" : ""}`}
             onClick={() => setRole("recruiter")}
           >
-            <div className="role-ico">🎁</div>
+            <div className="role-ico"></div>
             <div>Hiring</div>
           </button>
           <button
@@ -58,7 +58,7 @@ export default function Login({ onLogin }) {
             className={`role-btn ${role === "seeker" ? "active" : ""}`}
             onClick={() => setRole("seeker")}
           >
-            <div className="role-ico">🧭</div>
+            <div className="role-ico"></div>
             <div>Seeking</div>
           </button>
         </div>

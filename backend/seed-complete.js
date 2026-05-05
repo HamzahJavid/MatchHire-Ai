@@ -1,5 +1,6 @@
 require("dotenv").config();
 const mongoose = require("mongoose");
+const bcrypt = require("bcryptjs");
 const User = require("./models/User");
 const HirerProfile = require("./models/HirerProfile");
 const Job = require("./models/Job");
@@ -105,7 +106,15 @@ async function seedDatabase() {
             },
         ];
 
-        const createdUsers = await User.insertMany(dummyUsers);
+        const SALT_ROUNDS = 12;
+        const usersToInsert = await Promise.all(
+            dummyUsers.map(async (user) => ({
+                ...user,
+                password: await bcrypt.hash(user.password, SALT_ROUNDS),
+            })),
+        );
+
+        const createdUsers = await User.insertMany(usersToInsert);
         console.log(`✓ Created ${createdUsers.length} users`);
 
         // ===== CREATE HIRER PROFILES =====
@@ -113,19 +122,23 @@ async function seedDatabase() {
         const hirerProfiles = await HirerProfile.insertMany([
             {
                 user: hirerUsers[0]._id,
-                companyName: "Tech Corp",
-                companyWebsite: "https://techcorp.com",
-                industry: "Technology",
-                companySize: "100-500",
-                location: { city: "San Francisco", country: "USA" },
+                company: {
+                    name: "Tech Corp",
+                    website: "https://techcorp.com",
+                    industry: "Technology",
+                    size: "201-500",
+                    location: "San Francisco, USA",
+                },
             },
             {
                 user: hirerUsers[1]._id,
-                companyName: "Innovation Labs",
-                companyWebsite: "https://innovationlabs.com",
-                industry: "Software Development",
-                companySize: "50-100",
-                location: { city: "New York", country: "USA" },
+                company: {
+                    name: "Innovation Labs",
+                    website: "https://innovationlabs.com",
+                    industry: "Software Development",
+                    size: "51-200",
+                    location: "New York, USA",
+                },
             },
         ]);
         console.log(`✓ Created ${hirerProfiles.length} hirer profiles`);
@@ -286,12 +299,48 @@ async function seedDatabase() {
         let interviewCount = 0;
 
         // Alice swipes on jobs
-        const aliceSwipes = await Swipe.insertMany([
-            { user: seekerUsers[0]._id, job: jobs[0]._id, direction: "right", swipedAt: new Date() },
-            { user: seekerUsers[0]._id, job: jobs[1]._id, direction: "right", swipedAt: new Date() },
-            { user: seekerUsers[1]._id, job: jobs[0]._id, direction: "right", swipedAt: new Date() },
-            { user: seekerUsers[2]._id, job: jobs[2]._id, direction: "right", swipedAt: new Date() },
+        const swipes = await Swipe.insertMany([
+            {
+                swipeType: "seeker_on_job",
+                swipedBy: seekerUsers[0]._id,
+                job: jobs[0]._id,
+                direction: "right",
+                matchScore: 94,
+            },
+            {
+                swipeType: "seeker_on_job",
+                swipedBy: seekerUsers[1]._id,
+                job: jobs[0]._id,
+                direction: "right",
+                matchScore: 88,
+            },
+            {
+                swipeType: "seeker_on_job",
+                swipedBy: seekerUsers[2]._id,
+                job: jobs[2]._id,
+                direction: "right",
+                matchScore: 92,
+            },
+            {
+                swipeType: "hirer_on_seeker",
+                swipedBy: hirerUsers[0]._id,
+                seekerProfile: seekerProfiles[0]._id,
+                hirerProfile: hirerProfiles[0]._id,
+                job: jobs[0]._id,
+                direction: "right",
+                matchScore: 95,
+            },
+            {
+                swipeType: "hirer_on_seeker",
+                swipedBy: hirerUsers[1]._id,
+                seekerProfile: seekerProfiles[2]._id,
+                hirerProfile: hirerProfiles[1]._id,
+                job: jobs[2]._id,
+                direction: "right",
+                matchScore: 93,
+            },
         ]);
+        console.log(`✓ Created ${swipes.length} swipes`);
 
         // Hirers swipe on candidates to create matches
         const matches = [];
@@ -409,7 +458,65 @@ async function seedDatabase() {
         });
         interviews.push(interview3);
 
-        await Interview.insertMany(interviews);
+        // Interview 4: Hirer-posted interview with seeker answers (TEST SCENARIO)
+        const interview4 = await Interview.create({
+            seeker: seekerUsers[0]._id,
+            seekerProfile: seekerProfiles[0]._id,
+            hirer: hirerUsers[0]._id,
+            hirerProfile: hirerProfiles[0]._id,
+            job: jobs[0]._id,
+            match: matches[0]._id,
+            type: "real",
+            stage: "screening",
+            role: "Senior React Developer",
+            roleDescription: "Lead frontend development with React",
+            candidateContext: {
+                experience: "3 years",
+                skills: ["React", "JavaScript", "TypeScript"],
+                level: "senior",
+            },
+            questions: [
+                { questionId: "hq_1", text: "Walk us through your React architecture approach for large-scale applications.", order: 1 },
+                { questionId: "hq_2", text: "How do you handle state management and why did you choose that approach?", order: 2 },
+                { questionId: "hq_3", text: "Tell us about the most challenging React performance optimization you've done.", order: 3 },
+                { questionId: "hq_4", text: "How do you ensure code quality and maintainability in your React projects?", order: 4 },
+            ],
+            responses: [
+                {
+                    questionId: "hq_1",
+                    question: "Walk us through your React architecture approach for large-scale applications.",
+                    answer: "I typically organize React apps with clear component hierarchies, focusing on separation of concerns. I use container components for logic and presentational components for UI. For large apps, I implement code splitting with React.lazy and route-based splitting. State management is centralized using Redux, and I follow atomic design principles for component organization.",
+                    recordedAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000),
+                    durationSeconds: 120,
+                },
+                {
+                    questionId: "hq_2",
+                    question: "How do you handle state management and why did you choose that approach?",
+                    answer: "For complex applications, Redux is my go-to because it provides predictable state management and excellent debugging with Redux DevTools. I normalize the state structure to avoid nested data, which makes updates more efficient. For smaller projects, Context API + useReducer works well. I avoid prop drilling by using selectors and memoized components to prevent unnecessary re-renders.",
+                    recordedAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000),
+                    durationSeconds: 95,
+                },
+                {
+                    questionId: "hq_3",
+                    question: "Tell us about the most challenging React performance optimization you've done.",
+                    answer: "I optimized a dashboard that was re-rendering 50+ times per second. First, I profiled using React DevTools and found that the root component was re-rendering unnecessarily. I implemented React.memo on child components, used useMemo for expensive calculations, and split the store into feature-based slices. This reduced renders to 2-3 per second. I also lazy loaded charts and data tables, improving initial load time from 8s to 2.5s.",
+                    recordedAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000),
+                    durationSeconds: 130,
+                },
+                {
+                    questionId: "hq_4",
+                    question: "How do you ensure code quality and maintainability in your React projects?",
+                    answer: "I use ESLint with strict rules, Prettier for formatting, and TypeScript for type safety. Every component has unit tests using Jest and React Testing Library, aiming for 80%+ coverage. I follow clear naming conventions and documentation standards. Code reviews are mandatory before merging to main. I also use Storybook for component documentation and visual regression testing.",
+                    recordedAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000),
+                    durationSeconds: 110,
+                },
+            ],
+            status: "completed",
+            startedAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000),
+            completedAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000),
+        });
+        interviews.push(interview4);
+
         interviewCount = interviews.length;
         console.log(`✓ Created ${interviewCount} interviews`);
 
@@ -496,9 +603,13 @@ async function seedDatabase() {
         console.log(`   - Messages: ${messages.length}`);
         console.log(`   - Skills: ${skills.length}`);
 
-        console.log("\n🔑 Test Credentials:");
-        console.log("   - Seeker: alice@matchhire.com / password123");
-        console.log("   - Hirer: john@techcorp.com / password123");
+        console.log("\n🔑 Test Credentials (plain text for login):");
+        console.log("   - alice@matchhire.com / password123 (seeker)");
+        console.log("   - bob@matchhire.com / password123 (seeker)");
+        console.log("   - carol@matchhire.com / password123 (seeker)");
+        console.log("   - david@matchhire.com / password123 (seeker)");
+        console.log("   - john@techcorp.com / password123 (hirer)");
+        console.log("   - sarah@innovationlabs.com / password123 (hirer)");
     } catch (error) {
         console.error("✗ Seeding error:", error.message);
         process.exit(1);

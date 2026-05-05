@@ -9,6 +9,7 @@ export default function SwipePage({ role = "seeker" }) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [message, setMessage] = useState("");
   const [hirerJobs, setHirerJobs] = useState([]);
   const [selectedJobId, setSelectedJobId] = useState(null);
   const [jobLoading, setJobLoading] = useState(false);
@@ -16,6 +17,7 @@ export default function SwipePage({ role = "seeker" }) {
   useEffect(() => {
     setCurrentIndex(0);
     setError("");
+    setMessage("");
     if (role === "recruiter") {
       loadHirerJobs();
     } else {
@@ -42,7 +44,9 @@ export default function SwipePage({ role = "seeker" }) {
         location: job.location || "",
         matchScore: job.similarity || 0,
         description: job.description || "",
-        skills: job.requiredSkills || [],
+        skills: (job.requiredSkills || []).map((skill) =>
+          typeof skill === "string" ? skill : skill?.name || "",
+        ).filter(Boolean),
         jobId: job.jobId,
       }));
       setCards(mapped);
@@ -104,10 +108,14 @@ export default function SwipePage({ role = "seeker" }) {
     const currentCard = cards[currentIndex];
     if (!currentCard) return;
     setError("");
+    setMessage("");
 
     try {
       if (role === "seeker") {
-        await swipeAPI.swipeJob(currentCard.jobId, type);
+        const response = await swipeAPI.swipeJob(currentCard.jobId, type);
+        if (type === "right" && response?.data?.match) {
+          setMessage(`It's a match with ${response.data.match.job ? response.data.match.job.title : currentCard.title}!`);
+        }
       } else {
         if (!selectedJobId) throw new Error("No job selected for candidate matching.");
         await swipeAPI.swipeCandidate(currentCard.profileId, selectedJobId, type);
@@ -156,6 +164,12 @@ export default function SwipePage({ role = "seeker" }) {
 
       {error && (
         <div className="swipe-error">{error}</div>
+      )}
+
+      {message && !error && (
+        <div className="swipe-error" style={{ borderColor: "#d0f0d0", color: "#1f7a1f" }}>
+          {message}
+        </div>
       )}
 
       <div className="swipe-card-wrapper">

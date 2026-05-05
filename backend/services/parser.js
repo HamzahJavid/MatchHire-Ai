@@ -439,7 +439,15 @@ async function parseResumeWithAI(text) {
   const modelsToTry = ['gemini-2.5-flash', 'gemini-2.5-flash-lite', 'gemini-2.0-flash'];
   let lastError;
 
-  for (const modelName of modelsToTry) {
+  for (let i = 0; i < modelsToTry.length; i++) {
+    const modelName = modelsToTry[i];
+
+    // Add delay before retrying another model (2 seconds between attempts)
+    if (i > 0) {
+      console.log(`[AI PARSER] Waiting 2 seconds before retrying next model...`);
+      await new Promise(resolve => setTimeout(resolve, 2000));
+    }
+
     try {
       console.log(`[AI PARSER] Attempting model: ${modelName}`);
       model = genAI.getGenerativeModel({ model: modelName });
@@ -509,6 +517,10 @@ ${text}`;
     } catch (err) {
       console.warn(`[AI PARSER] Model ${modelName} failed:`, err.message);
       lastError = err;
+      // Only continue to next model if there are more to try
+      if (i < modelsToTry.length - 1) {
+        console.log(`[AI PARSER] Will retry with next model...`);
+      }
       continue;
     }
   }
@@ -518,8 +530,9 @@ ${text}`;
 }
 
 async function parseResume(text) {
-  console.log('[PARSER] Using ONLY AI (Gemini) for parsing - no local fallback');
   console.log('[PARSER] Resume text length:', text.length);
+
+  console.log('[PARSER] Attempting to parse with Gemini...');
   return await parseResumeWithAI(text);
 }
 

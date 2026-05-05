@@ -37,3 +37,5 @@ async function extractText(filePath) {
         `Unsupported file type: ${ext}. Only PDF and DOCX are accepted.`,
     );
 }
+
+module.exports = { extractText };

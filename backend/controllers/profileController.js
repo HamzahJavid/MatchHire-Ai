@@ -48,33 +48,15 @@ function buildProfileText(profile) {
   return parts.filter(Boolean).join('\n');
 }
 
-async function callAiProfileStrength(profileText) {
-  if (!process.env.GEMINI_API_KEY || !GoogleGenerativeAI) return null;
-  const gen = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-  const modelsToTry = ['gemini-2.5-flash', 'gemini-2.5-flash-lite', 'gemini-2.0-flash'];
-  const prompt = `You are an AI assistant scoring a job seeker profile. Given the following profile text, return ONLY valid JSON with one key called \"profileStrength\" whose value is an integer 0-100.
+function calculateProfileStrength(profile) {
+  const totalMatches = Number(profile?.stats?.totalMatches || 0);
+  const rightSwipes = Number(profile?.stats?.rightSwipes || 0);
+  const totalSwipes = Number(profile?.stats?.totalSwipes || 0);
 
-PROFILE_TEXT:
-${profileText}
+  const matchScore = Math.min(100, totalMatches * 25);
+  const engagementScore = totalSwipes > 0 ? Math.round((rightSwipes / totalSwipes) * 20) : 0;
 
-Example: { "profileStrength": 72 }`;
-
-  for (const modelName of modelsToTry) {
-    try {
-      const model = gen.getGenerativeModel({ model: modelName });
-      const result = await model.generateContent(prompt);
-      const raw = result.response.text();
-      const jsonMatch = raw.match(/\{[\s\S]*\}/);
-      if (!jsonMatch) continue;
-      const parsed = JSON.parse(jsonMatch[0]);
-      if (typeof parsed.profileStrength === 'number') {
-        return Math.max(0, Math.min(100, Math.round(parsed.profileStrength)));
-      }
-    } catch (e) {
-      continue;
-    }
-  }
-  return null;
+  return Math.max(0, Math.min(100, matchScore + engagementScore));
 }
 
 async function callAiSimilarity(profileText, jobText) {
@@ -85,7 +67,14 @@ async function callAiSimilarity(profileText, jobText) {
 
 PROFILE_TEXT:\n${profileText}\n\nJOB_TEXT:\n${jobText}\n\nExample: { \"similarity\": 82 }`;
 
-  for (const modelName of modelsToTry) {
+  for (let i = 0; i < modelsToTry.length; i++) {
+    const modelName = modelsToTry[i];
+
+    // Add delay before retrying another model (2 seconds between attempts)
+    if (i > 0) {
+      await new Promise(resolve => setTimeout(resolve, 2000));
+    }
+
     try {
       const model = gen.getGenerativeModel({ model: modelName });
       const result = await model.generateContent(prompt);
@@ -104,18 +93,12 @@ PROFILE_TEXT:\n${profileText}\n\nJOB_TEXT:\n${jobText}\n\nExample: { \"similarit
 }
 
 async function evaluateProfileStrength(profile, forceRecalc = false) {
-  if (profile.profileStrength != null && !forceRecalc) {
-    return profile.profileStrength;
-  }
-  const profileText = buildProfileText(profile);
-  if (!profileText) return null;
-  const score = await callAiProfileStrength(profileText).catch(() => null);
-  if (score != null) {
+  const score = calculateProfileStrength(profile);
+  if (forceRecalc || profile.profileStrength !== score) {
     profile.profileStrength = score;
     await profile.save();
-    return score;
   }
-  return null;
+  return score;
 }
 
 exports.evaluateProfileStrength = evaluateProfileStrength;
@@ -262,24 +245,30 @@ exports.updatePersonal = async (req, res) => {
 exports.getProfile = async (req, res) => {
   try {
     const userId = req.user._id;
-    const user = await User.findById(userId).select('firstName lastName email').lean();
+    const user = await User.findById(userId).select('fullName email avatarUrl').lean();
     if (!user) return res.status(401).json({ success: false, error: 'User not found' });
 
-    const profile = await SeekerProfile.findOne({ user: userId })
+    let profile = await SeekerProfile.findOne({ user: userId })
       .populate('skills')
       .populate('experience')
       .populate('education');
 
-    if (!profile) return res.status(404).json({ success: false, error: 'Seeker profile not found' });
-
-    if (profile.profileStrength == null) {
-      await evaluateProfileStrength(profile, false).catch((e) => console.warn('[getProfile] profile strength evaluation failed', e.message));
+    if (!profile) {
+      profile = await SeekerProfile.create({ user: userId });
+      profile = await SeekerProfile.findById(profile._id)
+        .populate('skills')
+        .populate('experience')
+        .populate('education');
     }
+
+    await evaluateProfileStrength(profile, true).catch((e) => console.warn('[getProfile] profile strength evaluation failed', e.message));
 
     const topJobs = await getTopJobsForProfile(profile).catch((e) => {
       console.warn('[getProfile] compute top jobs failed', e.message);
       return [];
     });
+
+    const totalMatches = profile.stats?.totalMatches || 0;
 
     return res.json({
       success: true,
@@ -289,6 +278,7 @@ exports.getProfile = async (req, res) => {
           headline: profile.headline,
           summary: profile.summary,
           location: profile.location,
+          cv: profile.cv || null,
           githubUrl: profile.githubUrl,
           linkedinUrl: profile.linkedinUrl,
           portfolioUrl: profile.portfolioUrl,
@@ -296,11 +286,13 @@ exports.getProfile = async (req, res) => {
           experience: profile.experience || [],
           education: profile.education || [],
           jobsSwiped: profile.jobsSwiped || [],
-          totalMatches: profile.stats?.totalMatches || 0,
+          totalMatches,
+          stats: profile.stats || {},
           aiReadiness: profile.aiReadiness || {},
-          profileStrength: profile.profileStrength != null ? profile.profileStrength : null,
+          profileStrength: profile.profileStrength != null ? profile.profileStrength : calculateProfileStrength(profile),
         },
         topJobs,
+        topMatches: topJobs,
       },
     });
   } catch (err) {

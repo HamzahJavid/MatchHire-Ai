@@ -24,6 +24,15 @@ const interviewSchema = new mongoose.Schema(
             required: true,
         },
 
+        hirer: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "User",
+        },
+
+        hirerProfile: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "HirerProfile",
+        },
 
         type: {
             type: String,

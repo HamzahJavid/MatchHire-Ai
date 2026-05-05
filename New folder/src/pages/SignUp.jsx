@@ -26,7 +26,7 @@ export default function SignUp({ onLogin }) {
       
       // Determine role from user object
       const userRole = response.data.user.hasSeeker ? "seeker" : "recruiter";
-      onLogin(userRole);
+      onLogin(userRole, response.data.user);
       
       navigate(`/dashboard/${userRole}`);
     } catch (err) {

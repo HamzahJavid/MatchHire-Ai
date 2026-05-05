@@ -1,73 +1,144 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
+import { interviewAPI } from "../services/api";
 import "../styles/ViewInterview.css";
 
-export default function ViewInterviewPage({ interviewId, onClose, interview }) {
+export default function ViewInterviewPage({ interviewId, matchId, onClose, interview, role = "seeker" }) {
+  const [data, setData] = useState(interview);
+  const [loading, setLoading] = useState(!interview);
+  const [error, setError] = useState(null);
   const [expandedQuestion, setExpandedQuestion] = useState(null);
+  const [answers, setAnswers] = useState({});
+  const [submitting, setSubmitting] = useState(false);
+  const [newQuestions, setNewQuestions] = useState([""]);
+  const [postingQuestions, setPostingQuestions] = useState(false);
 
-  // Mock interview if not provided
-  const mockInterview = interview || {
-    _id: "interview_1",
-    role: "Senior React Developer",
-    type: "real",
-    stage: "technical",
-    status: "completed",
-    evaluation: {
-      score: 87,
-      breakdown: {
-        communication: 88,
-        technical: 89,
-        fit: 84,
-      },
-      comment: "Excellent technical knowledge with clear communication. Strong candidate for the role.",
-      strengths: ["Deep React expertise", "Clear communication", "Good problem-solving"],
-      improvements: ["Could provide more specific examples"],
-    },
-    questions: [
-      { questionId: "q_1", text: "Tell me about your experience as a Senior React Developer." },
-      { questionId: "q_2", text: "Explain the difference between useMemo and useCallback." },
-      { questionId: "q_3", text: "How would you optimize a deeply nested component tree?" },
-    ],
-    responses: [
-      {
-        questionId: "q_1",
-        question: "Tell me about your experience as a Senior React Developer.",
-        answer: "I have 3 years of professional experience building React applications. I've led frontend teams and mentored junior developers.",
-        durationSeconds: 60,
-      },
-      {
-        questionId: "q_2",
-        question: "Explain the difference between useMemo and useCallback.",
-        answer: "useMemo memoizes return values, while useCallback memoizes function references. Both are used to prevent unnecessary re-renders.",
-        durationSeconds: 45,
-      },
-      {
-        questionId: "q_3",
-        question: "How would you optimize a deeply nested component tree?",
-        answer: "I would use memoization with React.memo, extract derived state, and consider splitting into smaller components.",
-        durationSeconds: 55,
-      },
-    ],
-    completedAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000),
+  // Load interview if not provided
+  useEffect(() => {
+    if (!data && interviewId && role === "seeker") {
+      loadInterview();
+    } else if (!data && matchId && role === "hirer") {
+      loadInterviewByMatch();
+    }
+  }, [interviewId, matchId, role]);
+
+  const loadInterview = async () => {
+    try {
+      setLoading(true);
+      const result = await interviewAPI.getInterview(interviewId);
+      setData(result.data);
+    } catch (err) {
+      setError(err.message || "Failed to load interview");
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const data = interview || mockInterview;
+  const loadInterviewByMatch = async () => {
+    try {
+      setLoading(true);
+      const result = await interviewAPI.getInterviewByMatch(matchId);
+      setData(result.data);
+    } catch (err) {
+      setError(err.message || "Failed to load interview");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleAnswerChange = (questionId, answer) => {
+    setAnswers((prev) => ({
+      ...prev,
+      [questionId]: answer,
+    }));
+  };
+
+  const submitAnswers = async () => {
+    try {
+      setSubmitting(true);
+      setError(null);
+
+      const answersList = (data.questions || []).map((q) => ({
+        questionId: q.questionId,
+        question: q.text,
+        answer: answers[q.questionId] || "",
+      }));
+
+      if (answersList.some((a) => !a.answer.trim())) {
+        setError("Please answer all questions");
+        return;
+      }
+
+      await interviewAPI.submitAnswers(interviewId, answersList);
+
+      // Reload interview to show updated status
+      await loadInterview();
+      setAnswers({});
+    } catch (err) {
+      setError(err.message || "Failed to submit answers");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const postInterviewQuestions = async () => {
+    try {
+      setPostingQuestions(true);
+      setError(null);
+
+      const questions = newQuestions.filter((q) => q.trim());
+      if (questions.length === 0) {
+        setError("Please add at least one question");
+        return;
+      }
+
+      await interviewAPI.postQuestions(matchId, questions, "screening");
+
+      // Reload interview to show posted questions
+      await loadInterviewByMatch();
+      setNewQuestions([""]);
+    } catch (err) {
+      setError(err.message || "Failed to post questions");
+    } finally {
+      setPostingQuestions(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="view-interview-container">
+        <div style={{ textAlign: "center", padding: "40px" }}>⏳ Loading interview...</div>
+      </div>
+    );
+  }
+
+  if (!data) {
+    return (
+      <div className="view-interview-container">
+        <div style={{ textAlign: "center", padding: "40px", color: "#dc2626" }}>
+          Interview not found
+        </div>
+      </div>
+    );
+  }
+
   const isCompleted = data.status === "completed";
   const isScheduled = data.status === "scheduled";
+  const isPending = data.status === "scheduled" || !data.responses?.length;
 
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: 20 }}
-      className="view-interview-container"
+      className="view-interview-page"
     >
       {/* Header */}
-      <div className="view-interview-header">
+      <div className="interview-page-header">
         <div>
-          <h1>{data.role}</h1>
-          <p className="interview-type">
-            {data.type === "real" ? "🎯 Real Job Interview" : "🧪 Practice Interview"} • {data.stage}
+          <h1>{data.role || "Interview"}</h1>
+          <p className="interview-meta">
+            {data.type === "real" ? "🎯 Real Interview" : "🧪 Practice"} • {data.stage}
           </p>
         </div>
         {onClose && (
@@ -77,189 +148,211 @@ export default function ViewInterviewPage({ interviewId, onClose, interview }) {
         )}
       </div>
 
-      {/* Status */}
-      <div className={`interview-status status-${data.status}`}>
-        <span className="status-badge">{data.status.toUpperCase()}</span>
-        {isCompleted && data.completedAt && (
-          <span className="status-time">
-            Completed {new Date(data.completedAt).toLocaleDateString()}
-          </span>
-        )}
-        {isScheduled && data.scheduledAt && (
-          <span className="status-time">
-            Scheduled for {new Date(data.scheduledAt).toLocaleDateString()}
-          </span>
-        )}
-      </div>
-
-      {/* Evaluation Results (if completed) */}
-      {isCompleted && data.evaluation && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          className="evaluation-results"
-        >
-          <h2>Interview Results</h2>
-
-          {/* Score Section */}
-          <div className="score-section">
-            <div className="main-score">
-              <div className="score-circle">
-                <span className="score-value">{data.evaluation.score}</span>
-                <span className="score-label">Overall Score</span>
-              </div>
-              <div className="score-comment">
-                <p>{data.evaluation.comment}</p>
-              </div>
-            </div>
-
-            {/* Breakdown */}
-            <div className="score-breakdown">
-              <div className="breakdown-item">
-                <div className="breakdown-header">
-                  <span>Communication</span>
-                  <span className="breakdown-score">{data.evaluation.breakdown.communication}</span>
-                </div>
-                <div className="breakdown-bar">
-                  <div
-                    className="breakdown-fill"
-                    style={{ width: `${data.evaluation.breakdown.communication}%` }}
-                  ></div>
-                </div>
-              </div>
-
-              <div className="breakdown-item">
-                <div className="breakdown-header">
-                  <span>Technical</span>
-                  <span className="breakdown-score">{data.evaluation.breakdown.technical}</span>
-                </div>
-                <div className="breakdown-bar">
-                  <div
-                    className="breakdown-fill"
-                    style={{ width: `${data.evaluation.breakdown.technical}%` }}
-                  ></div>
-                </div>
-              </div>
-
-              <div className="breakdown-item">
-                <div className="breakdown-header">
-                  <span>Fit</span>
-                  <span className="breakdown-score">{data.evaluation.breakdown.fit}</span>
-                </div>
-                <div className="breakdown-bar">
-                  <div
-                    className="breakdown-fill"
-                    style={{ width: `${data.evaluation.breakdown.fit}%` }}
-                  ></div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Strengths & Improvements */}
-          <div className="feedback-section">
-            {data.evaluation.strengths && data.evaluation.strengths.length > 0 && (
-              <div className="feedback-box strengths">
-                <h3>✨ Strengths</h3>
-                <ul>
-                  {data.evaluation.strengths.map((strength, i) => (
-                    <li key={i}>{strength}</li>
-                  ))}
-                </ul>
-              </div>
-            )}
-
-            {data.evaluation.improvements && data.evaluation.improvements.length > 0 && (
-              <div className="feedback-box improvements">
-                <h3>📈 Areas for Improvement</h3>
-                <ul>
-                  {data.evaluation.improvements.map((improvement, i) => (
-                    <li key={i}>{improvement}</li>
-                  ))}
-                </ul>
-              </div>
-            )}
-          </div>
-        </motion.div>
+      {error && (
+        <div style={{ background: "#fee", color: "#c00", padding: "12px 16px", borderRadius: "8px", margin: "0 0 20px 0" }}>
+          {error}
+        </div>
       )}
 
-      {/* Questions & Responses */}
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 0.2 }}
-        className="questions-section"
-      >
-        <h2>Questions & Responses</h2>
+      {/* ===== SEEKER VIEW ===== */}
+      {role === "seeker" && (
+        <>
+          {/* Status Badge */}
+          <div className={`interview-status-badge status-${data.status}`}>
+            <span>{data.status.toUpperCase()}</span>
+          </div>
 
-        <div className="questions-list">
-          {data.questions && data.questions.map((question, index) => {
-            const response = data.responses?.find(
-              (r) => r.questionId === question.questionId
-            );
-            const isExpanded = expandedQuestion === index;
+          {/* Questions to Answer */}
+          {!isCompleted && data.questions?.length > 0 && (
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="seeker-interview-section">
+              <h2>Interview Questions</h2>
+              <p className="section-subtitle">Answer all questions below. Take your time.</p>
 
-            return (
-              <motion.div
-                key={index}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.1 }}
-                className={`question-item ${isExpanded ? "expanded" : ""}`}
-              >
-                <div
-                  className="question-header"
-                  onClick={() =>
-                    setExpandedQuestion(isExpanded ? null : index)
-                  }
-                >
-                  <div className="question-label">
-                    <span className="question-number">Q{index + 1}</span>
-                    <span className="question-text">{question.text}</span>
-                  </div>
-                  {response && (
-                    <span className="response-badge">
-                      {response.durationSeconds}s
-                    </span>
-                  )}
-                  <span className={`expand-icon ${isExpanded ? "open" : ""}`}>
-                    ▼
-                  </span>
-                </div>
-
-                {isExpanded && response && (
+              <div className="questions-grid">
+                {data.questions.map((question, index) => (
                   <motion.div
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    className="question-content"
+                    key={question.questionId}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: index * 0.1 }}
+                    className="interview-question-card"
                   >
-                    <div className="response-box">
-                      <h4>Your Response:</h4>
-                      <p>{response.answer}</p>
+                    <div className="question-header">
+                      <span className="question-badge">Q{index + 1}</span>
+                      <h3>{question.text}</h3>
+                    </div>
+
+                    <textarea
+                      placeholder="Type your answer here..."
+                      value={answers[question.questionId] || ""}
+                      onChange={(e) => handleAnswerChange(question.questionId, e.target.value)}
+                      className="answer-textarea"
+                      rows="6"
+                    />
+
+                    <div className="char-count">
+                      {(answers[question.questionId] || "").length} characters
                     </div>
                   </motion.div>
-                )}
-              </motion.div>
-            );
-          })}
-        </div>
-      </motion.div>
+                ))}
+              </div>
 
-      {/* Actions */}
-      <div className="interview-actions">
-        {isCompleted && (
-          <>
-            <button className="btn outline">📥 Download Report</button>
-            <button className="btn primary">🔄 Retake Interview</button>
-          </>
-        )}
-        {isScheduled && (
-          <>
-            <button className="btn outline">📅 Reschedule</button>
-            <button className="btn primary">▶ Start Interview</button>
-          </>
-        )}
-      </div>
+              <div className="interview-actions">
+                <button className="btn outline" onClick={onClose} disabled={submitting}>
+                  Cancel
+                </button>
+                <button
+                  className="btn primary"
+                  onClick={submitAnswers}
+                  disabled={submitting || !Object.values(answers).some((a) => a?.trim())}
+                >
+                  {submitting ? "⏳ Submitting..." : "✓ Submit Answers"}
+                </button>
+              </div>
+            </motion.div>
+          )}
+
+          {/* Submitted Answers View */}
+          {isCompleted && data.responses?.length > 0 && (
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="submitted-answers-section">
+              <h2>Your Answers</h2>
+
+              <div className="submitted-qa-list">
+                {data.questions?.map((question, index) => {
+                  const response = data.responses?.find((r) => r.questionId === question.questionId);
+                  const isExp = expandedQuestion === index;
+
+                  return (
+                    <motion.div
+                      key={question.questionId}
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      className={`qa-item ${isExp ? "expanded" : ""}`}
+                    >
+                      <div
+                        className="qa-header"
+                        onClick={() => setExpandedQuestion(isExp ? null : index)}
+                      >
+                        <div>
+                          <span className="qa-number">Q{index + 1}</span>
+                          <span className="qa-question">{question.text}</span>
+                        </div>
+                        <span className="expand-arrow">{isExp ? "▲" : "▼"}</span>
+                      </div>
+
+                      {isExp && response && (
+                        <motion.div initial={{ height: 0 }} animate={{ height: "auto" }} className="qa-body">
+                          <div className="qa-answer">
+                            <strong>Your Answer:</strong>
+                            <p>{response.answer}</p>
+                          </div>
+                        </motion.div>
+                      )}
+                    </motion.div>
+                  );
+                })}
+              </div>
+            </motion.div>
+          )}
+        </>
+      )}
+
+      {/* ===== HIRER VIEW ===== */}
+      {role === "hirer" && (
+        <>
+          {/* Candidate Info */}
+          {data.seeker && (
+            <div className="candidate-info">
+              <div>
+                <h3>{data.seeker.fullName}</h3>
+                <p>{data.seekerProfile?.headline || "Job seeker"}</p>
+              </div>
+              <div className="candidate-meta">
+                <span>{data.seeker.email}</span>
+              </div>
+            </div>
+          )}
+
+          {/* Questions Sent / Awaiting Answers */}
+          {!data.responses?.length && data.questions?.length > 0 && (
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="hirer-section">
+              <h2>Questions Sent</h2>
+              <p className="section-subtitle">The candidate will see these questions and submit answers here.</p>
+
+              <div className="hirer-qa-list">
+                {data.questions.map((question, index) => (
+                  <div key={question.questionId || index} className="hirer-qa-item">
+                    <div className="hirer-qa-header" style={{ cursor: "default" }}>
+                      <div>
+                        <span className="qa-num">Q{index + 1}</span>
+                        <span className="qa-q">{question.text}</span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div className="hirer-actions" style={{ marginTop: 20 }}>
+                <button className="btn outline" onClick={onClose}>Back</button>
+              </div>
+            </motion.div>
+          )}
+
+          {/* View Answers Section */}
+          {data.responses?.length > 0 && (
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="hirer-section">
+              <h2>Candidate Answers</h2>
+
+              <div className="hirer-qa-list">
+                {data.questions?.map((question, index) => {
+                  const response = data.responses?.find((r) => r.questionId === question.questionId);
+                  const isExp = expandedQuestion === index;
+
+                  return (
+                    <motion.div
+                      key={question.questionId}
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      className={`hirer-qa-item ${isExp ? "expanded" : ""}`}
+                    >
+                      <div
+                        className="hirer-qa-header"
+                        onClick={() => setExpandedQuestion(isExp ? null : index)}
+                      >
+                        <div>
+                          <span className="qa-num">Q{index + 1}</span>
+                          <span className="qa-q">{question.text}</span>
+                        </div>
+                        <span className="arrow">{isExp ? "▲" : "▼"}</span>
+                      </div>
+
+                      {isExp && response && (
+                        <motion.div initial={{ height: 0 }} animate={{ height: "auto" }} className="hirer-qa-body">
+                          <div className="hirer-answer">
+                            <strong>Candidate's Answer:</strong>
+                            <p>{response.answer}</p>
+                            {response.recordedAt && (
+                              <small>Answered {new Date(response.recordedAt).toLocaleString()}</small>
+                            )}
+                          </div>
+                        </motion.div>
+                      )}
+                    </motion.div>
+                  );
+                })}
+              </div>
+            </motion.div>
+          )}
+
+          {/* Status Info */}
+          <div className="interview-status-info">
+            <span className={`status-badge status-${data.status}`}>{data.status.toUpperCase()}</span>
+            {isCompleted && data.completedAt && (
+              <span className="status-time">Submitted on {new Date(data.completedAt).toLocaleDateString()}</span>
+            )}
+          </div>
+        </>
+      )}
     </motion.div>
   );
 }

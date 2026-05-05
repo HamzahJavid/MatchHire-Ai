@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { resumeAPI, profileAPI } from "../services/api";
 import "../styles/SeekerProfile.css";
@@ -24,6 +24,56 @@ export default function SeekerProfile() {
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState("");
   const [saveSuccess, setSaveSuccess] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
+
+  // Load existing profile data on component mount
+  useEffect(() => {
+    let active = true;
+
+    async function loadProfile() {
+      try {
+        setLoading(true);
+        setLoadError("");
+        const response = await profileAPI.getProfile();
+        
+        if (!active) return;
+        
+        const data = response.data || response;
+        const profile = data.profile || {};
+        const user = data.user || {};
+        
+        // Pre-populate form with existing data
+        setFullName(user.fullName || "");
+        setTitle(profile.headline || "");
+        setBio(profile.summary || "");
+        setLocation(profile.location || "");
+        setGithubUrl(profile.githubUrl || "");
+        setLinkedinUrl(profile.linkedinUrl || "");
+        setPortfolioUrl(profile.portfolioUrl || "");
+        
+        // Handle skills - they come as objects with name property
+        if (profile.skills && Array.isArray(profile.skills)) {
+          const skillNames = profile.skills.map(s => 
+            typeof s === 'object' && s.name ? s.name : s
+          ).filter(Boolean);
+          setSkills(skillNames);
+        }
+      } catch (err) {
+        if (active) {
+          setLoadError(err.message || "Failed to load profile");
+          console.error("Error loading profile:", err);
+        }
+      } finally {
+        if (active) setLoading(false);
+      }
+    }
+
+    loadProfile();
+    return () => {
+      active = false;
+    };
+  }, []);
 
   async function handleFileChange(e) {
     const selectedFile = e.target.files?.[0];
@@ -64,7 +114,8 @@ setSkills(
   ).filter(Boolean)
 );
 
-
+      // Clear cache so profile endpoint fetches fresh data
+      profileAPI.clearCache();
 
       // Reset file input
       setFile(null);
@@ -107,6 +158,9 @@ setSkills(
       };
 
       await profileAPI.updateProfile(profileData);
+      
+      // Clear cache to ensure next load gets fresh data
+      profileAPI.clearCache();
 
       // Create a profile card for this saved resume/profile
       const newCard = {
@@ -151,6 +205,18 @@ setSkills(
         <h1>My Profile</h1>
         <p>Keep your profile updated for better matches.</p>
       </header>
+
+      {loadError && (
+        <div style={{ marginBottom: "1rem", padding: "0.75rem", backgroundColor: "#fee", color: "#c33", borderRadius: "4px" }}>
+          {loadError}
+        </div>
+      )}
+
+      {loading && (
+        <div style={{ marginBottom: "1rem", padding: "0.75rem", backgroundColor: "#eef", color: "#33c", borderRadius: "4px" }}>
+          Loading your profile...
+        </div>
+      )}
 
       {/* Resume Upload - Matching the design */}
       <section className="upload-section">

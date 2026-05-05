@@ -1,7 +1,9 @@
 const SeekerProfile = require('../models/SeekerProfile');
+const HirerProfile = require('../models/HirerProfile');
 const Interview = require('../models/Interview');
 const Match = require('../models/Match');
 const Job = require('../models/Job');
+const Message = require('../models/Message');
 const dotenv = require('dotenv');
 dotenv.config();
 let GoogleGenerativeAI;
@@ -23,7 +25,7 @@ function fallbackQuestions(role, experience) {
   return base;
 }
 
-async function callAiGenerateQuestions(payload) {
+async function callAiGenerateQuestions(payload, questionCount = 10) {
   if (!process.env.GEMINI_API_KEY || !GoogleGenerativeAI) return null;
   const gen = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
   const modelsToTry = ['gemini-2.5-flash', 'gemini-2.5-flash-lite', 'gemini-2.0-flash'];
@@ -35,7 +37,14 @@ ${JSON.stringify(payload, null, 2)}
 Response example: { "questions": ["Q1","Q2", ...] }
 Only return valid JSON.`;
 
-  for (const modelName of modelsToTry) {
+  for (let i = 0; i < modelsToTry.length; i++) {
+    const modelName = modelsToTry[i];
+
+    // Add delay before retrying another model (2 seconds between attempts)
+    if (i > 0) {
+      await new Promise(resolve => setTimeout(resolve, 2000));
+    }
+
     try {
       const model = gen.getGenerativeModel({ model: modelName });
       const result = await model.generateContent(prompt);
@@ -43,12 +52,25 @@ Only return valid JSON.`;
       const jsonMatch = raw.match(/\{[\s\S]*\}/);
       if (!jsonMatch) continue;
       const parsed = JSON.parse(jsonMatch[0]);
-      if (Array.isArray(parsed.questions)) return parsed.questions.slice(0, 10);
+      if (Array.isArray(parsed.questions)) return parsed.questions.slice(0, questionCount);
     } catch (e) {
       continue;
     }
   }
-  return null;
+}
+
+function normalizeQuestions(questions) {
+  return (Array.isArray(questions) ? questions : [])
+    .map((item, index) => {
+      const text = typeof item === 'string' ? item : item?.text;
+      if (!text || !String(text).trim()) return null;
+      return {
+        questionId: item?.questionId || `q_${Date.now()}_${index}`,
+        text: String(text).trim(),
+        order: Number.isFinite(Number(item?.order)) ? Number(item.order) : index + 1,
+      };
+    })
+    .filter(Boolean);
 }
 
 exports.generatePractice = async (req, res) => {
@@ -117,8 +139,24 @@ exports.generatePractice = async (req, res) => {
   }
 };
 
+function buildFallbackEvaluation(questionsAndAnswers) {
+  const answerText = JSON.stringify(questionsAndAnswers || []).toLowerCase();
+  const richness = Math.min(100, Math.max(45, answerText.length > 1000 ? 82 : answerText.length > 500 ? 74 : 62));
+  return {
+    score: richness,
+    breakdown: {
+      communication: Math.min(100, richness + 4),
+      technical: Math.min(100, richness - 2),
+      fit: Math.min(100, richness),
+    },
+    comment: 'Fallback evaluation generated locally because the AI service was unavailable. The answers were accepted and stored successfully.',
+    strengths: ['Clear submission', 'Completed all interview responses'],
+    improvements: ['Use more role-specific examples', 'Add measurable outcomes where possible'],
+  };
+}
+
 async function callAiEvaluate(questionsAndAnswers, jobDescription) {
-  if (!process.env.GEMINI_API_KEY || !GoogleGenerativeAI) return null;
+  if (!process.env.GEMINI_API_KEY || !GoogleGenerativeAI) return buildFallbackEvaluation(questionsAndAnswers);
   const gen = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
   const modelsToTry = ['gemini-2.5-flash', 'gemini-2.5-flash-lite', 'gemini-2.0-flash'];
   const prompt = `You are an expert interviewer and evaluator. Given the job description and a list of question/answer pairs, return ONLY a JSON object: { "score": N, "breakdown": {"communication":N, "technical":N, "fit":N }, "comment": "..." } where score is 0-100 representing AI readiness.
@@ -131,7 +169,14 @@ ${JSON.stringify(questionsAndAnswers, null, 2)}
 
 Return only valid JSON.`;
 
-  for (const modelName of modelsToTry) {
+  for (let i = 0; i < modelsToTry.length; i++) {
+    const modelName = modelsToTry[i];
+
+    // Add delay before retrying another model (2 seconds between attempts)
+    if (i > 0) {
+      await new Promise(resolve => setTimeout(resolve, 2000));
+    }
+
     try {
       const model = gen.getGenerativeModel({ model: modelName });
       const result = await model.generateContent(prompt);
@@ -144,7 +189,8 @@ Return only valid JSON.`;
       continue;
     }
   }
-  return null;
+
+  return buildFallbackEvaluation(questionsAndAnswers);
 }
 
 exports.evaluateTest = async (req, res) => {
@@ -422,6 +468,29 @@ exports.startRealInterview = async (req, res) => {
       }
     }
 
+    const existingInterviewQuery = { seeker: userId, job: jobId, type: 'real' };
+    if (matchId) existingInterviewQuery.match = matchId;
+
+    const existingInterview = await Interview.findOne(existingInterviewQuery).sort({ createdAt: -1 });
+    if (existingInterview && !['cancelled', 'expired'].includes(existingInterview.status)) {
+      if (existingInterview.status === 'scheduled') {
+        existingInterview.status = 'in_progress';
+        existingInterview.startedAt = existingInterview.startedAt || new Date();
+        await existingInterview.save();
+      }
+
+      return res.json({
+        success: true,
+        data: {
+          interviewId: existingInterview._id,
+          questions: existingInterview.questions || [],
+          totalQuestions: existingInterview.questions?.length || 0,
+          interview: existingInterview,
+          reused: true,
+        },
+      });
+    }
+
     // Generate questions for this job
     const payload = {
       role: job.title,
@@ -468,10 +537,379 @@ exports.startRealInterview = async (req, res) => {
         interviewId: interview._id,
         questions: questionsData,
         totalQuestions: questionsData.length,
+        interview,
       },
     });
   } catch (err) {
     console.error('[startRealInterview]', err);
+    return res.status(500).json({ success: false, error: err.message });
+  }
+};
+
+// HIRER: Generate an AI interview from the matched seeker profile
+exports.generateMatchInterview = async (req, res) => {
+  try {
+    const userId = req.user._id;
+    const { matchId, stage = 'screening', questionCount = 8, mode = 'ai' } = req.body || {};
+
+    if (!matchId) {
+      return res.status(400).json({ success: false, error: 'matchId required' });
+    }
+
+    const match = await Match.findById(matchId).populate('job seeker seekerProfile hirerProfile');
+    if (!match) {
+      return res.status(404).json({ success: false, error: 'Match not found' });
+    }
+
+    if (String(match.hirer) !== String(userId)) {
+      return res.status(403).json({ success: false, error: 'Unauthorized' });
+    }
+
+    const seekerProfile = match.seekerProfile;
+    const job = match.job;
+    const hirerProfile = await HirerProfile.findOne({ user: userId });
+
+    const manualQuestions = mode === 'manual' ? normalizeQuestions(req.body.questions) : [];
+    let generatedQuestions = manualQuestions;
+
+    if (mode === 'ai') {
+      const payload = {
+        jobTitle: job?.title,
+        jobDescription: job?.description,
+        company: job?.company,
+        stage,
+        seeker: {
+          headline: seekerProfile?.headline,
+          summary: seekerProfile?.summary,
+          location: seekerProfile?.location,
+          skills: Array.isArray(seekerProfile?.skills)
+            ? seekerProfile.skills.map((skill) => skill?.name || skill).filter(Boolean)
+            : [],
+          totalYearsOfExperience: seekerProfile?.totalYearsOfExperience || 0,
+        },
+        questionCount,
+      };
+
+      const aiQuestions = await callAiGenerateQuestions(payload, Number(questionCount) || 8).catch(() => null);
+      generatedQuestions = normalizeQuestions(aiQuestions);
+    }
+
+    if (!generatedQuestions.length) {
+      generatedQuestions = normalizeQuestions(fallbackQuestions(job?.title || 'candidate', seekerProfile?.headline || ''));
+    }
+
+    const existingInterview = await Interview.findOne({ match: matchId, hirer: userId });
+    const interviewPayload = {
+      match: matchId,
+      job: job?._id || match.job,
+      hirer: userId,
+      hirerProfile: hirerProfile?._id || null,
+      seeker: match.seeker?._id || match.seeker,
+      seekerProfile: seekerProfile?._id || match.seekerProfile,
+      type: 'real',
+      stage,
+      role: job?.title || match.job?.title || 'Interview',
+      roleDescription: job?.description || match.job?.description || '',
+      candidateContext: {
+        experience: String(seekerProfile?.totalYearsOfExperience || 0),
+        skills: Array.isArray(seekerProfile?.skills)
+          ? seekerProfile.skills.map((skill) => skill?.name || skill).filter(Boolean)
+          : [],
+        level: seekerProfile?.highestEducationLevel || 'candidate',
+      },
+      questions: generatedQuestions,
+      status: 'scheduled',
+      scheduledAt: new Date(),
+      startedAt: null,
+      completedAt: null,
+      notes: mode === 'manual' ? 'Manual interview created by hirer' : 'AI-generated interview created by hirer',
+    };
+
+    const interview = existingInterview
+      ? Object.assign(existingInterview, interviewPayload)
+      : new Interview(interviewPayload);
+
+    await interview.save();
+    await Match.findByIdAndUpdate(matchId, { status: 'interviewing' });
+
+    await Message.create({
+      match: matchId,
+      sender: userId,
+      receiver: match.seeker?._id || match.seeker,
+      text: `An interview has been prepared for you by ${req.user.fullName}. Please open the interview to answer the questions.`,
+      type: 'interview_link',
+      metadata: {
+        interviewId: interview._id,
+        actionType: 'interview_scheduled',
+      },
+    });
+
+    return res.json({
+      success: true,
+      data: {
+        interviewId: interview._id,
+        matchId,
+        mode,
+        questions: generatedQuestions,
+        interview,
+      },
+    });
+  } catch (err) {
+    console.error('[generateMatchInterview]', err);
+    return res.status(500).json({ success: false, error: err.message });
+  }
+};
+
+// HIRER: Post interview questions to a seeker for a match
+exports.postInterviewQuestions = async (req, res) => {
+  try {
+    const userId = req.user._id;
+    const { matchId, questions: questionTexts, stage = "screening" } = req.body || {};
+
+    if (!matchId || !Array.isArray(questionTexts) || questionTexts.length === 0) {
+      return res.status(400).json({ success: false, error: "matchId and questions required" });
+    }
+
+    // Get match details
+    const match = await Match.findById(matchId).populate("seeker seekerProfile job");
+    if (!match) {
+      return res.status(404).json({ success: false, error: "Match not found" });
+    }
+
+    // Verify hirer owns this match
+    if (match.hirer.toString() !== userId.toString()) {
+      return res.status(403).json({ success: false, error: "Unauthorized" });
+    }
+
+    // Check if interview already exists for this match
+    let interview = await Interview.findOne({ match: matchId, hirer: userId });
+
+    const questionsData = questionTexts.map((text, index) => ({
+      questionId: `q_${Date.now()}_${index}`,
+      text: text.trim(),
+      order: index + 1,
+    }));
+
+    if (interview) {
+      // Update existing interview with new questions
+      interview.questions = questionsData;
+      interview.status = "scheduled";
+      interview.startedAt = null;
+      interview.completedAt = null;
+      interview.responses = [];
+    } else {
+      // Create new interview
+      interview = new Interview({
+        match: matchId,
+        job: match.job._id,
+        hirer: userId,
+        hirerProfile: req.user.hirerProfile || null, // will be populated from user profile
+        seeker: match.seeker._id,
+        seekerProfile: match.seekerProfile._id,
+        type: "real",
+        stage: stage,
+        role: match.job.title,
+        roleDescription: match.job.description,
+        questions: questionsData,
+        status: "scheduled",
+        scheduledAt: new Date(),
+      });
+    }
+
+    await interview.save();
+    await Match.findByIdAndUpdate(matchId, { status: 'interviewing' });
+
+    await Message.create({
+      match: matchId,
+      sender: userId,
+      receiver: match.seeker._id || match.seeker,
+      text: `You have a new interview from ${req.user.fullName}. Please answer the questions when ready.`,
+      type: 'interview_link',
+      metadata: {
+        interviewId: interview._id,
+        actionType: 'manual_interview_scheduled',
+      },
+    });
+
+    return res.json({
+      success: true,
+      data: {
+        interviewId: interview._id,
+        matchId: matchId,
+        totalQuestions: questionsData.length,
+        questions: questionsData,
+      },
+    });
+  } catch (err) {
+    console.error("[postInterviewQuestions]", err);
+    return res.status(500).json({ success: false, error: err.message });
+  }
+};
+
+// SEEKER: Submit answers to hirer's interview questions
+exports.submitInterviewAnswers = async (req, res) => {
+  try {
+    const userId = req.user._id;
+    const { interviewId, answers } = req.body || {};
+
+    if (!interviewId || !Array.isArray(answers) || answers.length === 0) {
+      return res.status(400).json({ success: false, error: "interviewId and answers required" });
+    }
+
+    const interview = await Interview.findById(interviewId);
+    if (!interview) {
+      return res.status(404).json({ success: false, error: "Interview not found" });
+    }
+
+    // Verify seeker owns this interview
+    if (interview.seeker.toString() !== userId.toString()) {
+      return res.status(403).json({ success: false, error: "Unauthorized" });
+    }
+
+    // Save responses
+    interview.responses = answers.map((ans) => ({
+      questionId: ans.questionId,
+      question: ans.question,
+      answer: ans.answer.trim(),
+      recordedAt: new Date(),
+      durationSeconds: ans.durationSeconds || 0,
+      audioUrl: ans.audioUrl || null,
+    }));
+
+    interview.status = "completed";
+    interview.completedAt = new Date();
+    if (!interview.startedAt) {
+      interview.startedAt = new Date();
+    }
+
+    const qna = interview.responses.map((item) => ({
+      questionId: item.questionId,
+      question: item.question,
+      answer: item.answer,
+      durationSeconds: item.durationSeconds,
+      audioUrl: item.audioUrl,
+    }));
+
+    const aiResult = await callAiEvaluate(qna, interview.roleDescription || '').catch(() => null);
+
+    if (aiResult && typeof aiResult.score === 'number') {
+      interview.evaluation = {
+        score: Math.max(0, Math.min(100, Number(aiResult.score))),
+        assessedAt: new Date(),
+        breakdown: aiResult.breakdown || {},
+        comment: aiResult.comment || '',
+        strengths: aiResult.strengths || [],
+        improvements: aiResult.improvements || [],
+      };
+
+      const seekerProfile = await SeekerProfile.findOne({ user: userId });
+      if (seekerProfile) {
+        seekerProfile.aiReadiness.score = interview.evaluation.score;
+        seekerProfile.aiReadiness.assessedAt = new Date();
+        seekerProfile.aiReadiness.breakdown = {
+          cvParseConfidence: interview.evaluation.breakdown?.communication ?? seekerProfile.aiReadiness.breakdown?.cvParseConfidence ?? 0,
+          skillsMatched: interview.evaluation.breakdown?.technical ?? seekerProfile.aiReadiness.breakdown?.skillsMatched ?? 0,
+          profileCompleteness: interview.evaluation.breakdown?.fit ?? seekerProfile.aiReadiness.breakdown?.profileCompleteness ?? 0,
+        };
+
+        const score = interview.evaluation.score;
+        if (score >= 85) seekerProfile.aiReadiness.tag = 'ai_native';
+        else if (score >= 65) seekerProfile.aiReadiness.tag = 'high';
+        else if (score >= 40) seekerProfile.aiReadiness.tag = 'moderate';
+        else seekerProfile.aiReadiness.tag = 'low';
+
+        await seekerProfile.save();
+      }
+
+      const hirerProfile = await HirerProfile.findOne({ user: interview.hirer });
+      if (hirerProfile) {
+        hirerProfile.stats.totalMatches = Math.max(hirerProfile.stats.totalMatches || 0, hirerProfile.stats.totalMatches || 0);
+        await hirerProfile.save();
+      }
+
+      await Message.create({
+        match: interview.match,
+        sender: userId,
+        receiver: interview.hirer,
+        text: `Interview completed by ${req.user.fullName}. Score: ${interview.evaluation.score}/100.`,
+        type: 'system',
+        metadata: {
+          interviewId: interview._id,
+          actionType: 'interview_completed',
+        },
+      });
+    }
+
+    await interview.save();
+
+    return res.json({
+      success: true,
+      data: {
+        interviewId: interview._id,
+        message: 'Answers submitted successfully',
+        aiResult,
+        interview,
+      },
+    });
+  } catch (err) {
+    console.error("[submitInterviewAnswers]", err);
+    return res.status(500).json({ success: false, error: err.message });
+  }
+};
+
+// HIRER: Get interview with answers for a match
+exports.getInterviewAnswers = async (req, res) => {
+  try {
+    const userId = req.user._id;
+    const { interviewId } = req.params;
+
+    const interview = await Interview.findById(interviewId)
+      .populate("seeker", "fullName email")
+      .populate("seekerProfile", "headline skills")
+      .populate("job", "title company description")
+      .populate("match");
+
+    if (!interview) {
+      return res.status(404).json({ success: false, error: "Interview not found" });
+    }
+
+    // Verify hirer owns this interview
+    if (interview.hirer.toString() !== userId.toString()) {
+      return res.status(403).json({ success: false, error: "Unauthorized" });
+    }
+
+    return res.json({
+      success: true,
+      data: interview,
+    });
+  } catch (err) {
+    console.error("[getInterviewAnswers]", err);
+    return res.status(500).json({ success: false, error: err.message });
+  }
+};
+
+// HIRER: Get interview for a specific match
+exports.getInterviewByMatch = async (req, res) => {
+  try {
+    const userId = req.user._id;
+    const { matchId } = req.params;
+
+    const interview = await Interview.findOne({ match: matchId, hirer: userId })
+      .populate("seeker", "fullName email")
+      .populate("seekerProfile", "headline skills")
+      .populate("job", "title company description")
+      .populate("match");
+
+    if (!interview) {
+      return res.status(404).json({ success: false, error: "Interview not found for this match" });
+    }
+
+    return res.json({
+      success: true,
+      data: interview,
+    });
+  } catch (err) {
+    console.error("[getInterviewByMatch]", err);
     return res.status(500).json({ success: false, error: err.message });
   }
 };

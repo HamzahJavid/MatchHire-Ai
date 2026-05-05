@@ -11,6 +11,7 @@ const authRoutes = require("./routes/authRoutes");
 const profileRoutes = require("./routes/profileRoutes");
 const jobRoutes = require("./routes/jobRoutes");
 const swipeRoutes = require("./routes/swipeRoutes");
+const matchRoutes = require("./routes/matchRoutes");
 const interviewRoutes = require("./routes/interviewRoutes");
 const messageRoutes = require("./routes/messageRoutes");
 
@@ -22,7 +23,7 @@ if (!fs.existsSync("uploads")) fs.mkdirSync("uploads");
 app.use(helmet());
 app.use(
   cors({
-    origin: "http://localhost:5174", // your Vite dev port
+    origin: "http://localhost:5173", // your Vite dev port
     credentials: true
   }),
 );
@@ -35,6 +36,7 @@ app.use("/api/auth", authRoutes);
 app.use("/api/me", profileRoutes);
 app.use("/api/jobs", jobRoutes);
 app.use("/api/swipe", swipeRoutes);
+app.use("/api/matches", matchRoutes);
 app.use("/api/interview", interviewRoutes);
 app.use("/api/messages", messageRoutes);
 app.get("/health", (_req, res) => res.json({ status: "ok" }));
@@ -51,8 +53,37 @@ const MONGO_URI = process.env.MONGO_URI || "mongodb://localhost:27017/matchhire"
 
 mongoose
   .connect(MONGO_URI)
-  .then(() => {
+  .then(async () => {
     console.log("Connected to MongoDB");
+
+    // Fix legacy swipe indexes
+    try {
+      const db = mongoose.connection.db;
+      const swipesCollection = db.collection('swipes');
+
+      // Drop old indexes that cause E11000 errors
+      const indexes = await swipesCollection.listIndexes().toArray();
+      const indexNames = indexes.map(idx => idx.name);
+
+      if (indexNames.includes('swipedBy_1_job_1')) {
+        await swipesCollection.dropIndex('swipedBy_1_job_1');
+        console.log('✓ Dropped legacy swipedBy_1_job_1 index');
+      }
+
+      if (indexNames.includes('swipedBy_1_seekerProfile_1_hirerProfile_1')) {
+        await swipesCollection.dropIndex('swipedBy_1_seekerProfile_1_hirerProfile_1');
+        console.log('✓ Dropped legacy swipedBy_1_seekerProfile_1_hirerProfile_1 index');
+      }
+
+      // Rebuild indexes from schema definitions
+      const Swipe = require('./models/Swipe');
+      await Swipe.collection.dropIndexes();
+      await Swipe.syncIndexes();
+      console.log('✓ Rebuilt Swipe indexes');
+    } catch (err) {
+      console.warn('Index migration warning:', err.message);
+    }
+
     app.listen(PORT, () =>
       console.log(`Resume parser running on http://localhost:${PORT}`),
     );

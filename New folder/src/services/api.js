@@ -1,5 +1,6 @@
 // API Configuration and Service
 const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:4000/api";
+const PROFILE_CACHE_KEY = "profileCache_v2";
 
 // Helper function to get the auth token from localStorage
 const getAuthToken = () => localStorage.getItem("accessToken");
@@ -58,21 +59,62 @@ export const authAPI = {
 // Profile API Calls
 export const profileAPI = {
     getProfile: async () => {
-        return makeRequest("/me/profile");
+        try {
+            const cached = localStorage.getItem(PROFILE_CACHE_KEY);
+            if (cached) {
+                try {
+                    const parsed = JSON.parse(cached);
+                    // Return cached value immediately to avoid refetching
+                    return parsed;
+                } catch (e) {
+                    // fall through to refetch
+                }
+            }
+
+            const data = await makeRequest("/me/profile");
+            try {
+                localStorage.setItem(PROFILE_CACHE_KEY, JSON.stringify(data));
+            } catch (e) {
+                // ignore storage errors
+            }
+            return data;
+        } catch (err) {
+            // If network fails but cache exists, return cache
+            const cached = localStorage.getItem(PROFILE_CACHE_KEY);
+            if (cached) return JSON.parse(cached);
+            throw err;
+        }
     },
 
     updateProfile: async (profileData) => {
-        return makeRequest("/me/profile", {
+        const result = await makeRequest("/me/profile", {
             method: "PUT",
             body: JSON.stringify(profileData),
         });
+        // Update cache after successful update
+        try {
+            localStorage.setItem(PROFILE_CACHE_KEY, JSON.stringify(result));
+        } catch (e) { }
+        return result;
     },
 
     patchResume: async (resumeData) => {
-        return makeRequest("/resume", {
+        const result = await makeRequest("/resume", {
             method: "PATCH",
             body: JSON.stringify(resumeData),
         });
+        // resume patch likely changed profile; clear cache to force next fetch
+        try {
+            localStorage.removeItem(PROFILE_CACHE_KEY);
+        } catch (e) { }
+        return result;
+    },
+
+    // Utility to explicitly clear cached profile (useful on logout or manual refresh)
+    clearCache: () => {
+        try {
+            localStorage.removeItem(PROFILE_CACHE_KEY);
+        } catch (e) { }
     },
 };
 
@@ -164,28 +206,141 @@ export const swipeAPI = {
     },
 
     getMatches: async () => {
-        return makeRequest("/swipe/matches");
+        return makeRequest("/matches");
+    },
+};
+
+// Match API Calls
+export const matchAPI = {
+    getMatches: async (role = "seeker") => {
+        return makeRequest(`/matches?role=${encodeURIComponent(role)}`);
+    },
+
+    getMatchById: async (matchId) => {
+        return makeRequest(`/matches/${matchId}`);
+    },
+};
+
+// Message API Calls
+export const messageAPI = {
+    getConversations: async () => {
+        return makeRequest("/messages");
+    },
+
+    getMessages: async (matchId) => {
+        return makeRequest(`/messages/${matchId}`);
+    },
+
+    sendMessage: async (matchId, text, type = "text", metadata = {}) => {
+        return makeRequest("/messages/send", {
+            method: "POST",
+            body: JSON.stringify({ matchId, text, type, metadata }),
+        });
+    },
+
+    markAsRead: async (matchId) => {
+        return makeRequest(`/messages/${matchId}/read`, {
+            method: "PATCH",
+        });
+    },
+
+    getUnreadCount: async () => {
+        return makeRequest("/messages/count/unread");
     },
 };
 
 // Interview API Calls
 export const interviewAPI = {
-    startInterview: async (jobId) => {
-        return makeRequest("/interview/start", {
+    generatePractice: async (role, roleDescription, experience, skills, level, jobId, type = "practice") => {
+        return makeRequest("/interview/generate", {
             method: "POST",
-            body: JSON.stringify({ jobId }),
+            body: JSON.stringify({
+                role,
+                roleDescription,
+                experience,
+                skills,
+                level,
+                jobId,
+                type,
+            }),
         });
     },
 
-    submitAnswer: async (interviewId, questionIndex, answer) => {
-        return makeRequest("/interview/submit", {
+    generateMatchInterview: async (matchId, mode = "ai", payload = {}) => {
+        return makeRequest("/interview/generate-match", {
             method: "POST",
-            body: JSON.stringify({ interviewId, questionIndex, answer }),
+            body: JSON.stringify({
+                matchId,
+                mode,
+                ...payload,
+            }),
         });
     },
 
-    getInterviewResult: async (interviewId) => {
+    evaluateTest: async (interviewId, qna, jobDescription = "") => {
+        return makeRequest("/interview/evaluate", {
+            method: "POST",
+            body: JSON.stringify({
+                interviewId,
+                qna,
+                jobDescription,
+            }),
+        });
+    },
+
+    saveResponses: async (interviewId, responses) => {
+        return makeRequest("/interview/responses", {
+            method: "POST",
+            body: JSON.stringify({ interviewId, responses }),
+        });
+    },
+
+    submitAnswers: async (interviewId, answers) => {
+        return makeRequest("/interview/submit-answers", {
+            method: "POST",
+            body: JSON.stringify({ interviewId, answers }),
+        });
+    },
+
+    startRealInterview: async (jobId, matchId) => {
+        return makeRequest("/interview/start-real", {
+            method: "POST",
+            body: JSON.stringify({ jobId, matchId }),
+        });
+    },
+
+    postQuestions: async (matchId, questions, stage = "screening") => {
+        return makeRequest("/interview/question/post", {
+            method: "POST",
+            body: JSON.stringify({ matchId, questions, stage }),
+        });
+    },
+
+    getInterviewAnswers: async (interviewId) => {
+        return makeRequest(`/interview/answers/${interviewId}`);
+    },
+
+    getInterviewByMatch: async (matchId) => {
+        return makeRequest(`/interview/match/${matchId}`);
+    },
+
+    getInterview: async (interviewId) => {
         return makeRequest(`/interview/${interviewId}`);
+    },
+
+    listInterviews: async () => {
+        return makeRequest("/interview");
+    },
+
+    updateStatus: async (interviewId, status, notes) => {
+        return makeRequest(`/interview/${interviewId}/status`, {
+            method: "PATCH",
+            body: JSON.stringify({ status, notes }),
+        });
+    },
+
+    getStats: async () => {
+        return makeRequest("/interview/stats/overview");
     },
 };
 

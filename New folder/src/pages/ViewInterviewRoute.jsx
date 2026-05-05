@@ -67,6 +67,8 @@ export default function ViewInterviewRoute({ role = "seeker" }) {
 
   return (
     <ViewInterviewPage
+      interviewId={interviewId}
+      matchId={interview?.match?._id || interview?.match || null}
       interview={interview}
       onClose={() => navigate(-1)}
       onStartInterview={handleStartInterview}

@@ -3,6 +3,7 @@ const Match = require('../models/Match');
 const SeekerProfile = require('../models/SeekerProfile');
 const HirerProfile = require('../models/HirerProfile');
 const Job = require('../models/Job');
+const User = require('../models/User');
 
 function mapTypeToDirection(type) {
   if (!type) return null;
@@ -19,8 +20,24 @@ exports.swipeJob = async (req, res) => {
     const direction = mapTypeToDirection(type);
     if (!direction) return res.status(400).json({ success: false, error: 'type must be heart or reject' });
 
-    const seekerProfile = await SeekerProfile.findOne({ user: user._id });
-    if (!seekerProfile) return res.status(404).json({ success: false, error: 'Seeker profile not found' });
+    let seekerProfile = await SeekerProfile.findOne({ user: user._id });
+    if (!seekerProfile) {
+      // Create a minimal seeker profile automatically to avoid errors when a user hasn't completed profile setup yet
+      try {
+        const userRecord = await User.findById(user._id).lean();
+        seekerProfile = await SeekerProfile.create({
+          user: user._id,
+          headline: userRecord?.fullName || 'Candidate',
+          summary: userRecord?.fullName ? `${userRecord.fullName} — profile created automatically` : 'Profile created automatically',
+          isPublic: true,
+        });
+        // mark user as having seeker profile
+        await User.findByIdAndUpdate(user._id, { $set: { hasSeeker: true } });
+      } catch (e) {
+        console.warn('[swipeJob] failed to create placeholder seeker profile', e.message);
+        return res.status(404).json({ success: false, error: 'Seeker profile not found' });
+      }
+    }
 
     const job = await Job.findById(jobId).populate('hirer');
     if (!job) return res.status(404).json({ success: false, error: 'Job not found' });
@@ -108,8 +125,22 @@ exports.swipeCandidate = async (req, res) => {
     const hirerProfile = await HirerProfile.findOne({ user: user._id });
     if (!hirerProfile) return res.status(404).json({ success: false, error: 'Hirer profile not found' });
 
-    const seekerProfile = await SeekerProfile.findOne({ user: userId });
-    if (!seekerProfile) return res.status(404).json({ success: false, error: 'Seeker profile not found' });
+    let seekerProfile = await SeekerProfile.findOne({ user: userId });
+    if (!seekerProfile) {
+      // If the target seeker has no profile, create a minimal placeholder so hirer actions can proceed
+      try {
+        const userRecord = await User.findById(userId).lean();
+        seekerProfile = await SeekerProfile.create({
+          user: userId,
+          headline: userRecord?.fullName || 'Candidate',
+          summary: userRecord?.fullName ? `${userRecord.fullName} — profile created automatically` : 'Profile created automatically',
+          isPublic: true,
+        });
+      } catch (e) {
+        console.warn('[swipeCandidate] failed to create placeholder seeker profile', e.message);
+        return res.status(404).json({ success: false, error: 'Seeker profile not found' });
+      }
+    }
 
     const swipe = await Swipe.findOneAndUpdate(
       { swipeType: 'hirer_on_seeker', swipedBy: user._id, seekerProfile: seekerProfile._id, hirerProfile: hirerProfile._id },

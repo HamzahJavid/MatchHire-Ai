@@ -147,10 +147,21 @@ export default function SeekerDashboard({ currentUser }) {
           </div>
 
           <div className="profile-skills">
-            {(profile.skills || []).slice(0, 8).map((s) => (
-              <span key={s._id || s.name} className="skill-pill">{typeof s === 'object' ? s.name : s}</span>
-            ))}
-            {(profile.skills || []).length === 0 && <small className="muted">No skills listed yet</small>}
+            {(() => {
+              const raw = profile.skills || [];
+              const seen = new Set();
+              const uniq = [];
+              for (const s of raw) {
+                const name = typeof s === 'object' ? s.name : s;
+                if (!name) continue;
+                const key = String(name).trim().toLowerCase();
+                if (seen.has(key)) continue;
+                seen.add(key);
+                uniq.push(name.trim());
+                if (uniq.length >= 8) break;
+              }
+              return uniq.length ? uniq.map((name) => <span key={name} className="skill-pill">{name}</span>) : <small className="muted">No skills listed yet</small>;
+            })()}
           </div>
           <div className="profile-actions">
             <Link to="/dashboard/seeker/profile" className="btn-outline">Edit Profile</Link>

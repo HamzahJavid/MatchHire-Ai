@@ -7,6 +7,8 @@ import "../styles/MatchesPage.css";
 
 export default function MatchesPage({ role = "seeker" }) {
   const [matches, setMatches] = useState([]);
+  const [hirerJobs, setHirerJobs] = useState([]);
+  const [selectedJobId, setSelectedJobId] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const navigate = useNavigate();
@@ -18,7 +20,7 @@ export default function MatchesPage({ role = "seeker" }) {
       setLoading(true);
       setError("");
       try {
-        const response = await matchAPI.getMatches(role === "recruiter" ? "hirer" : role);
+        const response = await matchAPI.getMatches(role === "recruiter" ? "hirer" : role, role === "recruiter" ? selectedJobId : null);
         if (!active) return;
         setMatches(response.data || []);
       } catch (err) {
@@ -49,7 +51,20 @@ export default function MatchesPage({ role = "seeker" }) {
         state: { interview: response.data.interview || null },
       });
     } catch (err) {
+      async function loadHirerJobs() {
+        if (role !== 'recruiter') return;
+        try {
+          const res = await import('../services/api').then(m => m.jobsAPI.getMyJobs());
+          if (!active) return;
+          setHirerJobs(res.data || []);
+          if ((res.data || []).length > 0 && !selectedJobId) setSelectedJobId((res.data || [])[0]._id);
+        } catch (e) {
+          // ignore
+        }
+      }
+
       setError(err.message || "Unable to start interview.");
+      loadHirerJobs();
     }
   }
 
@@ -66,7 +81,32 @@ export default function MatchesPage({ role = "seeker" }) {
     navigate(`/dashboard/${role}/messages`, { state: { matchId: match._id } });
   }
 
-  const seekerMatches = matches;
+  const isRecruiter = role === "recruiter";
+  const completedMatches = matches.filter(isCompletedMatch);
+  const activeMatches = matches.filter((match) => !isCompletedMatch(match));
+
+  function getContactEmail(match) {
+    return isRecruiter ? match.seeker?.email : match.hirer?.email;
+  }
+
+  function getContactName(match) {
+    return isRecruiter ? match.seeker?.fullName : match.hirer?.fullName;
+  }
+
+  function formatCompletedLabel(match) {
+    const interview = match.interview || {};
+    const date = interview.completedAt || interview.updatedAt || interview.createdAt;
+    if (!date) return "Recently completed";
+    try {
+      return new Intl.DateTimeFormat(undefined, {
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+      }).format(new Date(date));
+    } catch {
+      return "Recently completed";
+    }
+  }
 
   return (
     <div className="matches-container">
@@ -81,13 +121,83 @@ export default function MatchesPage({ role = "seeker" }) {
           </p>
         </div>
 
+        {isRecruiter && (
+          <div style={{ marginBottom: 12 }}>
+            <label style={{ marginRight: 8 }}>Filter by job:</label>
+            <select value={selectedJobId || ''} onChange={(e) => setSelectedJobId(e.target.value)}>
+              <option value="">All jobs</option>
+              {hirerJobs.map((j) => (
+                <option key={j._id} value={j._id}>{j.title} — {j.company}</option>
+              ))}
+            </select>
+          </div>
+        )}
+
         {error && <div className="swipe-error">{error}</div>}
 
-        <div className="matches-list">
+        {completedMatches.length > 0 && (
+          <section className="matches-section">
+            <div className="section-header">
+              <h2>Completed</h2>
+              <p>Interviews that were submitted and marked complete.</p>
+            </div>
+
+            <div className="completed-grid">
+              {completedMatches.map((match) => (
+                <article key={match._id} className="completed-match-card">
+                  <div className="completed-card-top">
+                    <div className="completed-card-info">
+                      <div className="avatar completed-avatar">
+                        {(getContactName(match) || match.name || "C").charAt(0)}
+                      </div>
+                      <div>
+                        <h3>{getContactName(match) || match.name || "Completed match"}</h3>
+                        <p>{match.role}</p>
+                        <small>{match.subtitle}</small>
+                      </div>
+                    </div>
+
+                    <span className="completed-badge">Completed</span>
+                  </div>
+
+                  <div className="completed-details">
+                    <div className="detail-pill">
+                      <span>Match score</span>
+                      <strong>{match.matchScore}%</strong>
+                    </div>
+                    <div className="detail-pill">
+                      <span>AI score</span>
+                      <strong>{match.interview?.evaluation?.score ?? "—"}</strong>
+                    </div>
+                    <div className="detail-pill contact-pill">
+                      <span>Contact email</span>
+                      <strong>{getContactEmail(match) || "Not available"}</strong>
+                    </div>
+                  </div>
+
+                  <div className="completed-footer">
+                    <span className="completed-meta">Finished {formatCompletedLabel(match)}</span>
+                    <button className="btn outline" onClick={() => handleViewInterview(match)}>
+                      View Interview
+                    </button>
+                  </div>
+                </article>
+              ))}
+            </div>
+          </section>
+        )}
+
+        <section className="matches-section">
+          <div className="section-header">
+            <h2>Matches</h2>
+            <p>Active matches with live messaging and interview actions.</p>
+          </div>
+
+          <div className="matches-list">
           {loading ? (
             <div className="match-card">Loading matches…</div>
-          ) : seekerMatches.length > 0 ? (
-            seekerMatches.map((match) => (
+          ) : activeMatches.length > 0 ? (
+            activeMatches.map((match) => (
               <MatchCard
                 key={match._id}
                 data={match}
@@ -104,8 +214,14 @@ export default function MatchesPage({ role = "seeker" }) {
               <p>Keep swiping to generate matches from the database.</p>
             </div>
           )}
-        </div>
+          </div>
+        </section>
       </motion.div>
     </div>
   );
+}
+
+function isCompletedMatch(match) {
+  const interview = match?.interview;
+  return Boolean(interview && (interview.status === "completed" || interview.evaluation?.score != null));
 }

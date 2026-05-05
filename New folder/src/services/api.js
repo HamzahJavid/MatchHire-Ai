@@ -212,8 +212,10 @@ export const swipeAPI = {
 
 // Match API Calls
 export const matchAPI = {
-    getMatches: async (role = "seeker") => {
-        return makeRequest(`/matches?role=${encodeURIComponent(role)}`);
+    getMatches: async (role = "seeker", jobId = null) => {
+        const q = new URLSearchParams({ role });
+        if (jobId) q.set('jobId', jobId);
+        return makeRequest(`/matches?${q.toString()}`);
     },
 
     getMatchById: async (matchId) => {

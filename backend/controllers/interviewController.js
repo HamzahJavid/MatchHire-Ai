@@ -29,12 +29,16 @@ async function callAiGenerateQuestions(payload, questionCount = 10) {
   if (!process.env.GEMINI_API_KEY || !GoogleGenerativeAI) return null;
   const gen = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
   const modelsToTry = ['gemini-2.5-flash', 'gemini-2.5-flash-lite', 'gemini-2.0-flash'];
-  const prompt = `You are an expert interviewer. Given the following JSON input, generate a JSON response containing a single key "questions" with an array of the top 10 interview questions tailored to this candidate and role.
+  const prompt = `You are an expert interviewer. Given the following JSON input, generate a JSON response containing these keys:
+
+"questions": an array of the top ${questionCount} interview questions tailored to this candidate and role.
+"candidateName": the candidate's full name if discernible from the profile, otherwise null.
+"links": an array of helpful profile links (GitHub, LinkedIn, portfolio) if found.
 
 INPUT:
 ${JSON.stringify(payload, null, 2)}
 
-Response example: { "questions": ["Q1","Q2", ...] }
+Response example: { "questions": ["Q1","Q2", ...], "candidateName":"Jane Doe", "links": ["https://...", "https://..."] }
 Only return valid JSON.`;
 
   for (let i = 0; i < modelsToTry.length; i++) {
@@ -52,7 +56,14 @@ Only return valid JSON.`;
       const jsonMatch = raw.match(/\{[\s\S]*\}/);
       if (!jsonMatch) continue;
       const parsed = JSON.parse(jsonMatch[0]);
-      if (Array.isArray(parsed.questions)) return parsed.questions.slice(0, questionCount);
+      // Normalize into object with questions array
+      if (Array.isArray(parsed.questions)) {
+        return {
+          questions: parsed.questions.slice(0, questionCount),
+          candidateName: parsed.candidateName || null,
+          links: Array.isArray(parsed.links) ? parsed.links.filter(Boolean) : [],
+        };
+      }
     } catch (e) {
       continue;
     }
@@ -85,7 +96,8 @@ exports.generatePractice = async (req, res) => {
     }
 
     const payload = { role, roleDescription, experience, skills, level, userId };
-    let questions = await callAiGenerateQuestions(payload).catch(() => null);
+    const aiResult = await callAiGenerateQuestions(payload).catch(() => null);
+    let questions = aiResult && Array.isArray(aiResult.questions) ? aiResult.questions : null;
     if (!questions) questions = fallbackQuestions(role || 'candidate', experience || '');
 
     // Create interview record with questions
@@ -500,7 +512,8 @@ exports.startRealInterview = async (req, res) => {
       level: 'candidate',
     };
 
-    let questions = await callAiGenerateQuestions(payload).catch(() => null);
+    const aiResult = await callAiGenerateQuestions(payload).catch(() => null);
+    let questions = aiResult && Array.isArray(aiResult.questions) ? aiResult.questions : null;
     if (!questions) questions = fallbackQuestions(job.title, seekerProfile.totalYearsOfExperience?.toString() || '');
 
     const questionsData = questions.map((text, index) => ({
@@ -571,6 +584,8 @@ exports.generateMatchInterview = async (req, res) => {
 
     const manualQuestions = mode === 'manual' ? normalizeQuestions(req.body.questions) : [];
     let generatedQuestions = manualQuestions;
+    let candidateName = null;
+    let candidateLinks = [];
 
     if (mode === 'ai') {
       const payload = {
@@ -590,8 +605,12 @@ exports.generateMatchInterview = async (req, res) => {
         questionCount,
       };
 
-      const aiQuestions = await callAiGenerateQuestions(payload, Number(questionCount) || 8).catch(() => null);
-      generatedQuestions = normalizeQuestions(aiQuestions);
+      const aiResult = await callAiGenerateQuestions(payload, Number(questionCount) || 8).catch(() => null);
+      if (aiResult && Array.isArray(aiResult.questions)) {
+        generatedQuestions = normalizeQuestions(aiResult.questions || []);
+        candidateName = aiResult.candidateName || null;
+        candidateLinks = Array.isArray(aiResult.links) ? aiResult.links.filter(Boolean) : [];
+      }
     }
 
     if (!generatedQuestions.length) {
@@ -625,24 +644,44 @@ exports.generateMatchInterview = async (req, res) => {
       notes: mode === 'manual' ? 'Manual interview created by hirer' : 'AI-generated interview created by hirer',
     };
 
+    // Attach candidateName and links as top-level fields so they persist
+    if (candidateName) interviewPayload.candidateName = candidateName;
+    if (candidateLinks && candidateLinks.length) interviewPayload.candidateLinks = candidateLinks;
+
+    // If an interview already exists for this match and hirer, do not create/send a duplicate
+    if (existingInterview && !['cancelled', 'expired'].includes(String(existingInterview.status))) {
+      return res.json({
+        success: true,
+        data: {
+          interviewId: existingInterview._id,
+          exists: true,
+          message: 'An active interview already exists for this match',
+        },
+      });
+    }
+
     const interview = existingInterview
       ? Object.assign(existingInterview, interviewPayload)
       : new Interview(interviewPayload);
 
+    const isNew = !existingInterview;
     await interview.save();
     await Match.findByIdAndUpdate(matchId, { status: 'interviewing' });
 
-    await Message.create({
-      match: matchId,
-      sender: userId,
-      receiver: match.seeker?._id || match.seeker,
-      text: `An interview has been prepared for you by ${req.user.fullName}. Please open the interview to answer the questions.`,
-      type: 'interview_link',
-      metadata: {
-        interviewId: interview._id,
-        actionType: 'interview_scheduled',
-      },
-    });
+    // Send a single notification message only when creating a new interview
+    if (isNew) {
+      await Message.create({
+        match: matchId,
+        sender: userId,
+        receiver: match.seeker?._id || match.seeker,
+        text: `An interview has been prepared for you by ${req.user.fullName}. Please open the interview to answer the questions.`,
+        type: 'interview_link',
+        metadata: {
+          interviewId: interview._id,
+          actionType: 'interview_scheduled',
+        },
+      });
+    }
 
     return res.json({
       success: true,
@@ -873,8 +912,21 @@ exports.getInterviewAnswers = async (req, res) => {
       return res.status(404).json({ success: false, error: "Interview not found" });
     }
 
+    const ownerId = interview.hirer
+      ? String(interview.hirer)
+      : interview.match?.hirer
+        ? String(interview.match.hirer)
+        : null;
+
+    if (!ownerId) {
+      return res.status(409).json({
+        success: false,
+        error: "Interview is missing hirer ownership data",
+      });
+    }
+
     // Verify hirer owns this interview
-    if (interview.hirer.toString() !== userId.toString()) {
+    if (ownerId !== userId.toString()) {
       return res.status(403).json({ success: false, error: "Unauthorized" });
     }
 
@@ -901,7 +953,30 @@ exports.getInterviewByMatch = async (req, res) => {
       .populate("match");
 
     if (!interview) {
-      return res.status(404).json({ success: false, error: "Interview not found for this match" });
+      const fallbackInterview = await Interview.findOne({ match: matchId })
+        .populate("seeker", "fullName email")
+        .populate("seekerProfile", "headline skills")
+        .populate("job", "title company description")
+        .populate("match");
+
+      if (!fallbackInterview) {
+        return res.status(404).json({ success: false, error: "Interview not found for this match" });
+      }
+
+      const ownerId = fallbackInterview.hirer
+        ? String(fallbackInterview.hirer)
+        : fallbackInterview.match?.hirer
+          ? String(fallbackInterview.match.hirer)
+          : null;
+
+      if (!ownerId || ownerId !== userId.toString()) {
+        return res.status(403).json({ success: false, error: "Unauthorized" });
+      }
+
+      return res.json({
+        success: true,
+        data: fallbackInterview,
+      });
     }
 
     return res.json({

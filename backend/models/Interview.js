@@ -55,6 +55,8 @@ const interviewSchema = new mongoose.Schema(
             skills: [{ type: String }],
             level: { type: String }, // junior, mid, senior, etc.
         },
+        candidateName: { type: String },
+        candidateLinks: [{ type: String }],
 
         questions: [
             {

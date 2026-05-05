@@ -58,6 +58,11 @@ export default function ViewInterviewPage({ interviewId, matchId, onClose, inter
       setSubmitting(true);
       setError(null);
 
+      const effectiveInterviewId = interviewId || data?._id;
+      if (!effectiveInterviewId) {
+        throw new Error("Interview ID is missing");
+      }
+
       const answersList = (data.questions || []).map((q) => ({
         questionId: q.questionId,
         question: q.text,
@@ -69,7 +74,7 @@ export default function ViewInterviewPage({ interviewId, matchId, onClose, inter
         return;
       }
 
-      await interviewAPI.submitAnswers(interviewId, answersList);
+      await interviewAPI.submitAnswers(effectiveInterviewId, answersList);
 
       // Reload interview to show updated status
       await loadInterview();

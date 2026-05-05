@@ -422,8 +422,12 @@ exports.getCandidates = async (req, res) => {
 
     const jobText = [job.title || '', job.description || '', (job.requiredSkills || []).map(s => (s && s.name) || s || '').join(' ')].filter(Boolean).join('\n');
 
-    // fetch seeker profiles (limit to reasonable number)
-    const seekers = await SeekerProfile.find({ isActive: true }).limit(300).populate('skills').lean();
+    // Only consider seekers who have swiped on this job (direction right)
+    const seekerOnJobSwipes = await require('../models/Swipe').find({ swipeType: 'seeker_on_job', job: jobId, direction: 'right' }).select('swipedBy').lean();
+    const seekerUserIds = seekerOnJobSwipes.map((s) => String(s.swipedBy));
+
+    // fetch seeker profiles for those users (limit to reasonable number)
+    const seekers = await SeekerProfile.find({ isActive: true, user: { $in: seekerUserIds } }).limit(300).populate('skills').lean();
 
     // Exclude seekers the hirer already swiped on for this hirer
     const swipesByHirer = await require('../models/Swipe').find({ swipeType: 'hirer_on_seeker', hirerProfile: job.hirer }).select('seekerProfile').lean();

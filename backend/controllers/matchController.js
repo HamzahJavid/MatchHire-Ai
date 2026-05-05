@@ -54,8 +54,10 @@ exports.getMatches = async (req, res) => {
     try {
         const userId = req.user._id;
         const requestedMode = req.query.role;
+        const jobFilterId = req.query.jobId;
         const activeMode = requestedMode || req.user.activeMode || (req.user.hasHirer && !req.user.hasSeeker ? 'hirer' : 'seeker');
-        const filter = activeMode === 'hirer' ? { hirer: userId } : { seeker: userId };
+        const baseFilter = activeMode === 'hirer' ? { hirer: userId } : { seeker: userId };
+        const filter = jobFilterId ? { ...baseFilter, job: jobFilterId } : baseFilter;
 
         const matches = await Match.find(filter)
             .populate('job')
